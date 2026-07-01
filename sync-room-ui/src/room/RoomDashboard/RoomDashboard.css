@@ -1,0 +1,249 @@
+.room-dashboard {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+/* ── Section ── */
+.db-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.db-section:last-child { border-bottom: none; }
+
+.db-section-title {
+  margin: 0 0 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #6b7280;
+}
+
+/* ── Stat rows ── */
+.db-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.db-stat-label {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.db-stat-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: #d1d5db;
+}
+
+.db-timer {
+  font-size: 13px;
+  font-weight: 700;
+  color: #a78bfa;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.db-code {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e5e7eb;
+  font-family: monospace;
+  letter-spacing: 0.08em;
+}
+
+.db-expired { color: #ef4444; }
+
+/* ── Progress bars ── */
+.db-bar-track {
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+
+.db-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.db-bar-online    { background: #22c55e; }
+.db-bar-ready     { background: #8b5cf6; }
+.db-bar-all-ready { background: #22c55e; }
+
+/* ── Participant chips ── */
+.db-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.db-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+.db-chip:hover     { background: rgba(255, 255, 255, 0.03); }
+.db-chip-offline   { opacity: 0.45; }
+
+.db-chip-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: white;
+}
+
+.db-chip-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: #d1d5db;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-chip-ready {
+  font-size: 11px;
+  color: #4b5563;
+  flex-shrink: 0;
+}
+.db-chip-ready-on { color: #22c55e; font-weight: 700; }
+
+/* ── Content card ── */
+.db-no-content {
+  font-size: 11px;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.db-content-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.db-thumbnail {
+  width: 80px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.db-thumb-placeholder {
+  width: 80px;
+  height: 45px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.db-thumb-youtube     { background: rgba(239, 68, 68, 0.1); }
+.db-thumb-local_video { background: rgba(139, 92, 246, 0.1); }
+
+.db-content-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.db-content-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+.db-content-badge-youtube    { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.db-content-badge-local_video{ background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+
+.db-content-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e5e7eb;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.db-content-meta {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+/* ── Settings grid ── */
+.db-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.db-setting-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: background 0.12s;
+}
+
+.db-setting-on  {
+  background: rgba(34, 197, 94, 0.06);
+  border-color: rgba(34, 197, 94, 0.1);
+}
+.db-setting-off {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.04);
+  opacity: 0.5;
+}
+
+.db-setting-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.db-setting-label {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 500;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-setting-dot {
+  font-size: 7px;
+  flex-shrink: 0;
+  color: inherit;
+}
+.db-setting-on .db-setting-dot  { color: #22c55e; }
+.db-setting-off .db-setting-dot { color: #4b5563; }

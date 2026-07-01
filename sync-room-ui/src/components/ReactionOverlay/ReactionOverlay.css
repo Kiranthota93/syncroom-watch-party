@@ -1,0 +1,50 @@
+/* ── Overlay layer (sits above the video, pointer-events:none) ── */
+.reaction-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 20;
+  border-radius: inherit;
+}
+
+/* ── Single floating emoji ── */
+.reaction-float {
+  position: absolute;
+  bottom: 60px;              /* start just above the bar */
+  font-size: 28px;
+  line-height: 1;
+  pointer-events: none;
+  animation: reaction-rise linear forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes reaction-rise {
+  0%   { transform: translateY(0)     scale(1);    opacity: 1; }
+  60%  { transform: translateY(-200px) scale(1.15); opacity: 1; }
+  100% { transform: translateY(-360px) scale(.8);  opacity: 0; }
+}
+
+/* ── Picker bar ── */
+.reaction-bar {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  padding: 8px 0 4px;
+}
+
+.reaction-btn {
+  width: 40px; height: 40px;
+  border: none;
+  background: rgba(255,255,255,.05);
+  border-radius: 12px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, transform .1s;
+  position: relative;
+}
+.reaction-btn:hover  { background: rgba(255,255,255,.12); transform: scale(1.15); }
+.reaction-btn:active { transform: scale(.9); }

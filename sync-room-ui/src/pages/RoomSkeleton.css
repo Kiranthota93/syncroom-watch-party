@@ -1,0 +1,123 @@
+.rsk-page {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #1c2958 0%, #081631 40%, #04112a 100%);
+}
+
+/* ── Header ── */
+.rsk-header {
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: rgba(10, 15, 35, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, .05);
+}
+
+.rsk-header-left,
+.rsk-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Body ── */
+.rsk-body {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px 20px;
+  align-items: flex-start;
+}
+
+/* ── Main column ── */
+.rsk-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rsk-video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 520px;
+  background: rgba(17, 25, 55, 0.7);
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rsk-video-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.rsk-source-bar {
+  display: flex;
+  gap: 12px;
+}
+
+/* ── Sidebar ── */
+.rsk-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  background: rgba(17, 25, 55, 0.85);
+  border: 1px solid rgba(255, 255, 255, .05);
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rsk-tabs {
+  display: flex;
+  gap: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, .05);
+}
+
+.rsk-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rsk-participant-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rsk-participant-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rsk-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, .04);
+}
+
+.rsk-status-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Mobile: stack body */
+@media (max-width: 767px) {
+  .rsk-body { flex-direction: column; }
+  .rsk-sidebar { width: 100%; }
+  .rsk-header-right .skeleton:nth-child(n+3) { display: none; }
+}

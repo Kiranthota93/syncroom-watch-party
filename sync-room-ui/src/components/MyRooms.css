@@ -1,0 +1,122 @@
+@keyframes my-rooms-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.my-rooms {
+  max-width: 900px;
+  margin: 0 auto 60px;
+  padding: 0 16px;
+  animation: my-rooms-in 0.3s ease;
+}
+
+.my-rooms-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.my-rooms-header h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e5e7eb;
+  margin: 0;
+}
+
+.my-rooms-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #a78bfa;
+  background: rgba(139,92,246,.12);
+  border: 1px solid rgba(139,92,246,.2);
+  padding: 1px 7px;
+  border-radius: 99px;
+}
+
+.my-rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.my-room-card {
+  background: rgba(13,24,53,0.85);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color .2s;
+}
+.my-room-card:hover { border-color: rgba(139,92,246,.3); }
+
+.my-room-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.my-room-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+.my-room-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.room-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.badge-host   { background: rgba(250,204,21,.1); color: #facc15; border: 1px solid rgba(250,204,21,.2); }
+.badge-online { display: flex; align-items: center; gap: 4px; background: rgba(34,197,94,.08); color: #4ade80; border: 1px solid rgba(34,197,94,.15); }
+
+.online-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.my-room-code {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: .05em;
+}
+
+.my-room-meta {
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.my-room-join {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(139,92,246,.12);
+  border: 1px solid rgba(139,92,246,.25);
+  color: #a78bfa;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.my-room-join:hover {
+  background: rgba(139,92,246,.25);
+  border-color: rgba(139,92,246,.5);
+}

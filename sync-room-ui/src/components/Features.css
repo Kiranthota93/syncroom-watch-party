@@ -1,0 +1,15 @@
+.features-section {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 900px;
+  margin: 80px auto;
+  padding: 0 16px;
+}
+
+@media (max-width: 720px) {
+  .features-section { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .features-section { grid-template-columns: 1fr; }
+}

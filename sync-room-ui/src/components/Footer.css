@@ -1,0 +1,56 @@
+.footer {
+  margin-top: 120px;
+
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+
+  padding: 32px 0;
+}
+
+.footer-content {
+  max-width: 1200px;
+
+  margin: 0 auto;
+
+  padding: 0 24px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  color: white;
+
+  font-weight: 600;
+}
+
+.footer-logo {
+  width: 32px;
+  height: 32px;
+
+  border-radius: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(
+    135deg,
+    #8b5cf6,
+    #6366f1
+  );
+
+  box-shadow:
+    0 0 20px rgba(139, 92, 246, 0.4);
+}
+
+.footer p {
+  color: #94a3b8;
+
+  font-size: 14px;
+}

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: syncroom-api
+    runtime: node
+    rootDir: sync-room-node
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/server.js
+    healthCheckPath: /health
+    autoDeploy: true          # deploy on every push to the connected branch
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: warn
+      - key: PORT
+        value: 8000
+
+      # Set these in the Render dashboard — never commit real values
+      - key: MONGO_URI
+        sync: false
+      - key: CLIENT_URL
+        sync: false           # set to your Vercel frontend URL

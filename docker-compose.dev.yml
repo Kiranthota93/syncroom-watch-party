@@ -1,0 +1,26 @@
+# Development overrides — hot reload via volume mounts.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+
+  backend:
+    build:
+      target: deps          # stop at deps stage (skip runtime hardening)
+    volumes:
+      - ./sync-room-node/src:/app/src:ro
+    command: ["node", "--watch", "src/server.js"]
+    ports:
+      - "8000:8000"         # expose backend directly for debugging
+    environment:
+      NODE_ENV: development
+
+  frontend:
+    build:
+      context: ./sync-room-ui
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./sync-room-ui/src:/app/src:ro
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: "http://localhost:8000"
+    command: ["npm", "run", "dev", "--", "--host"]

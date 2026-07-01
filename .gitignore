@@ -1,0 +1,7 @@
+# Root-level gitignore — covers the whole monorepo
+.DS_Store
+Thumbs.db
+*.log
+
+# Docker override files with secrets
+docker-compose.override.yml

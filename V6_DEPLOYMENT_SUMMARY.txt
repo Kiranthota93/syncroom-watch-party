@@ -1,0 +1,428 @@
+================================================================
+SYNCROOM — V6 PRODUCTION ENGINEERING SUMMARY
+What was done and how to deploy manually
+================================================================
+
+PROJECT OVERVIEW
+-----------------
+SyncRoom is a real-time watch-party web app.
+- Frontend: React + Vite (in folder: sync-room-ui/)
+- Backend: Node.js + Express + Socket.IO (in folder: sync-room-node/)
+- Database: MongoDB Atlas
+- Real-time: Socket.IO
+
+The project is a monorepo with this structure:
+  sync-room/
+    sync-room-node/     (backend)
+    sync-room-ui/       (frontend)
+    docker-compose.yml
+    render.yaml
+    README.md
+
+
+================================================================
+PHASE 6.1 — PROJECT CLEANUP
+================================================================
+
+WHAT WAS DONE:
+- Deleted unused file: sync-room-ui/src/utils/crypto.jsx (dead code, had hardcoded secret)
+- Deleted unused file: sync-room-node/src/utils/crypto.js (dead code, had hardcoded secret)
+- Replaced all alert() and window.confirm() browser dialogs with proper inline UI
+- Fixed backend .gitignore (it was empty — .env was unprotected)
+- Fixed frontend .gitignore (did not exclude .env files)
+- Cleaned up sync-room-node/.env (removed duplicate MONGO_URI, trailing spaces, dead SECRET_KEY)
+- Created .env.example files for both frontend and backend
+- Added PropTypes to ActivityTimeline component
+
+FILES CHANGED:
+- sync-room-node/.gitignore          — now properly excludes node_modules, .env, logs
+- sync-room-ui/.gitignore            — now excludes .env, .env.*, keeps .env.example
+- sync-room-node/.env.example        — safe template with placeholder values
+- sync-room-ui/.env.example          — safe template: VITE_API_URL=http://localhost:8000
+- sync-room-node/.env                — cleaned (removed duplicate + dead keys)
+- sync-room-ui/src/pages/CreateRoom.jsx — replaced alert() with inline error state
+- sync-room-ui/src/components/Hero.jsx  — replaced alert() with inline error state
+- sync-room-ui/src/room/SourceSelector/SourceSelector.jsx — removed alert(), silent log
+- sync-room-ui/src/room/ParticipantsPanel/ParticipantsPanel.jsx
+    — replaced window.confirm() with inline "Yes/Cancel" confirmation in dropdown menu
+    — added createLogger import
+- DELETED: sync-room-ui/src/utils/crypto.jsx
+- DELETED: sync-room-node/src/utils/crypto.js
+
+
+================================================================
+PHASE 6.2 — ENVIRONMENT MANAGEMENT
+================================================================
+
+WHAT WAS DONE:
+- Created a centralized config module for the backend
+- All process.env reads are now in ONE place only: src/config/index.js
+- The config module throws immediately if MONGO_URI or CLIENT_URL is missing
+  (fail-fast — server never starts in broken state)
+- Updated all backend files to import from config instead of reading process.env directly
+- Fixed frontend .env variable name: was API_URL (wrong), now VITE_API_URL (correct for Vite)
+- Created .env.development and .env.production for both frontend and backend
+- Also deleted the backend utils/crypto.js as part of cleanup
+
+NEW FILE: sync-room-node/src/config/index.js
+----------------------------------------
+This file reads all environment variables once at startup.
+Required variables (crash if missing): CLIENT_URL, MONGO_URI
+Optional variables: PORT (default 8000), NODE_ENV, LOG_LEVEL
+
+The config object exports:
+  config.port        = PORT env var (number)
+  config.clientUrl   = CLIENT_URL env var
+  config.mongoUri    = MONGO_URI env var
+  config.nodeEnv     = NODE_ENV env var
+  config.logLevel    = LOG_LEVEL env var
+  config.isDev       = true if not production
+  config.isProd      = true if production
+
+FILES CHANGED:
+- sync-room-node/src/config/index.js  — NEW: central config module
+- sync-room-node/src/server.js        — uses config.port instead of process.env.PORT
+- sync-room-node/src/app.js           — uses config.clientUrl for CORS
+- sync-room-node/src/config/db.js     — uses config.mongoUri for MongoDB connection
+- sync-room-node/src/socket/socketManager.js — uses config.clientUrl for Socket.IO CORS
+- sync-room-ui/.env                   — fixed: VITE_API_URL=http://localhost:8000
+- sync-room-ui/.env.development       — VITE_API_URL=http://localhost:8000
+- sync-room-ui/.env.production        — VITE_API_URL=https://your-api.onrender.com
+- sync-room-node/.env.development     — full dev config
+- sync-room-node/.env.production      — production template with placeholder values
+
+
+================================================================
+PHASE 6.3 — DOCKER
+================================================================
+
+WHAT WAS DONE:
+- Created Dockerfiles for both frontend and backend
+- Created nginx.conf for the frontend (serves React SPA + proxies API/Socket.IO)
+- Created docker-compose.yml (one command to run everything)
+- Created docker-compose.dev.yml (development with hot reload)
+- Added /health endpoint to the backend
+- Updated api.jsx and socket.js to support Docker's nginx proxy pattern
+- Created .dockerignore files for both packages
+
+HOW DOCKER WORKS:
+  docker compose up --build
+
+  This starts:
+  1. Backend container (Node.js on port 8000, internal only)
+  2. Frontend container (nginx on port 80, public)
+
+  nginx acts as a reverse proxy:
+  - http://localhost/          → serves React app (static files)
+  - http://localhost/api/*     → proxies to backend:8000/api/*
+  - http://localhost/socket.io → proxies to backend:8000/socket.io (WebSocket)
+
+  Because nginx handles routing, VITE_API_URL is left EMPTY in Docker.
+  The frontend uses relative URLs (/api/...) which nginx routes to the backend.
+
+IMPORTANT ABOUT VITE_API_URL:
+  - Docker: leave EMPTY (nginx proxies everything)
+  - Vercel+Render: must be set to https://your-backend.onrender.com
+  - Local dev: set to http://localhost:8000
+
+NEW FILES:
+- sync-room-node/Dockerfile          — 2-stage build (deps + runtime)
+- sync-room-node/.dockerignore
+- sync-room-ui/Dockerfile            — 2-stage build (Vite build + nginx serve)
+- sync-room-ui/Dockerfile.dev        — simple dev container
+- sync-room-ui/.dockerignore
+- sync-room-ui/nginx.conf            — nginx config: SPA routing + API proxy
+- docker-compose.yml                 — production compose
+- docker-compose.dev.yml             — dev compose with volume mounts
+- .gitignore (root level)            — prevents docker-compose.override.yml commits
+
+FILES CHANGED:
+- sync-room-node/src/app.js          — added GET /health endpoint
+- sync-room-ui/src/services/api.jsx  — changed || to ?? so empty string works as base URL
+- sync-room-ui/src/socket/socket.js  — changed to use undefined when no VITE_API_URL
+
+
+================================================================
+PHASE 6.4 — GITHUB README
+================================================================
+
+WHAT WAS DONE:
+- Created a full professional README.md at the project root
+- Created MIT LICENSE file
+
+README COVERS:
+- Badges (Node.js, React, Socket.IO, MongoDB, Docker, License, CI)
+- Feature table
+- Tech stack table
+- Architecture diagram (ASCII)
+- Getting started (Docker and local development)
+- Environment variables reference
+- Project folder structure
+- Full API endpoint reference
+- Socket events reference
+- Version roadmap (V1-V6 status)
+- Contributing guide
+- License
+
+NEW FILES:
+- README.md (project root)
+- LICENSE (MIT, root level)
+
+
+================================================================
+PHASE 6.5 — CI/CD (GITHUB ACTIONS)
+================================================================
+
+WHAT WAS DONE:
+- Created two GitHub Actions workflow files
+- CI runs on every push and every pull request
+- Deploy runs automatically after CI passes on the main branch
+
+WORKFLOW 1: .github/workflows/ci.yml
+  Triggers: push to main/develop, pull request to main
+
+  Job 1 — Frontend CI:
+    1. Checkout code
+    2. Set up Node.js 20
+    3. npm ci (uses package-lock.json)
+    4. npm run lint (ESLint)
+    5. npm test (Vitest — 116 tests)
+    6. npm run build (Vite build with VITE_API_URL empty)
+
+  Job 2 — Backend CI:
+    1. Checkout code
+    2. Set up Node.js 20
+    3. npm ci --omit=dev
+    4. Syntax check all JS files (node --check)
+
+WORKFLOW 2: .github/workflows/deploy.yml
+  Triggers: after the CI workflow completes on main branch
+
+  Job 1 — Deploy Frontend to Vercel:
+    (Vercel builds it using env vars set in Vercel dashboard)
+    1. Install Vercel CLI globally
+    2. vercel --prod (Vercel does the build with VITE_API_URL from its dashboard)
+
+  Job 2 — Deploy Backend to Render:
+    1. curl POST to Render deploy hook URL
+    2. Fails the job if HTTP response is not 2xx
+
+GITHUB SECRETS REQUIRED:
+  VERCEL_TOKEN         — API token from vercel.com/account/tokens
+  VERCEL_ORG_ID        — from .vercel/project.json after running "vercel link"
+  VERCEL_PROJECT_ID    — from .vercel/project.json after running "vercel link"
+  RENDER_DEPLOY_HOOK_URL — from Render dashboard → service → Settings → Deploy Hook
+
+NEW FILES:
+- .github/workflows/ci.yml
+- .github/workflows/deploy.yml
+- .github/SECRETS.md (setup guide for the secrets above)
+
+
+================================================================
+PHASE 6.6 — DEPLOYMENT CONFIGURATION
+================================================================
+
+WHAT WAS DONE:
+- Created vercel.json for the frontend (tells Vercel how to build and serve)
+- Created render.yaml for the backend (Render Blueprint — infra as code)
+- Created docs/Deployment.md (full step-by-step deployment guide)
+- Updated README with deployment section
+- Fixed deploy.yml: removed pre-build step so Vercel uses its own env vars
+
+NEW FILES:
+- sync-room-ui/vercel.json     — Vercel build settings + SPA rewrites + asset caching
+- render.yaml                  — Render Blueprint (creates backend service from config)
+- docs/Deployment.md           — full manual deployment guide
+
+vercel.json content summary:
+  - buildCommand: npm run build
+  - outputDirectory: dist
+  - installCommand: npm ci
+  - rewrites: all routes → /index.html (React Router SPA support)
+  - headers: immutable cache for /assets/ (Vite content-hashes filenames)
+
+render.yaml content summary:
+  - type: web service
+  - rootDir: sync-room-node
+  - buildCommand: npm ci --omit=dev
+  - startCommand: node src/server.js
+  - healthCheckPath: /health
+  - Marks MONGO_URI and CLIENT_URL as "sync: false" (must set in dashboard)
+
+
+================================================================
+COMPLETE FILE LIST — EVERYTHING CREATED OR CHANGED IN V6
+================================================================
+
+NEW FILES CREATED:
+  sync-room-node/src/config/index.js      — backend config module
+  sync-room-node/Dockerfile
+  sync-room-node/.dockerignore
+  sync-room-node/.env.example
+  sync-room-node/.env.development
+  sync-room-node/.env.production
+  sync-room-ui/Dockerfile
+  sync-room-ui/Dockerfile.dev
+  sync-room-ui/.dockerignore
+  sync-room-ui/nginx.conf
+  sync-room-ui/vercel.json
+  sync-room-ui/.env.example
+  sync-room-ui/.env.development
+  sync-room-ui/.env.production
+  docker-compose.yml
+  docker-compose.dev.yml
+  render.yaml
+  README.md
+  LICENSE
+  .gitignore (root)
+  .github/workflows/ci.yml
+  .github/workflows/deploy.yml
+  .github/SECRETS.md
+  docs/Deployment.md
+  V6_DEPLOYMENT_SUMMARY.txt (this file)
+
+FILES DELETED:
+  sync-room-ui/src/utils/crypto.jsx       — dead code
+  sync-room-node/src/utils/crypto.js      — dead code
+
+FILES MODIFIED:
+  sync-room-node/.gitignore
+  sync-room-node/.env
+  sync-room-node/src/server.js
+  sync-room-node/src/app.js
+  sync-room-node/src/config/db.js
+  sync-room-node/src/socket/socketManager.js
+  sync-room-ui/.gitignore
+  sync-room-ui/.env
+  sync-room-ui/src/services/api.jsx
+  sync-room-ui/src/socket/socket.js
+  sync-room-ui/src/pages/CreateRoom.jsx
+  sync-room-ui/src/components/Hero.jsx
+  sync-room-ui/src/room/SourceSelector/SourceSelector.jsx
+  sync-room-ui/src/room/ParticipantsPanel/ParticipantsPanel.jsx
+
+
+================================================================
+HOW TO DEPLOY MANUALLY (WITHOUT CI/CD)
+================================================================
+
+STEP 1 — SET UP MONGODB ATLAS
+  1. Go to cloud.mongodb.com and create a free account
+  2. Create a new cluster (free M0 tier is fine)
+  3. Create a database user: Security → Database Access → Add New User
+     Username: syncroom_user, Password: (generate a strong one)
+     Role: Atlas Admin (or readWriteAnyDatabase)
+  4. Allow network access: Security → Network Access → Add IP Address → Allow from anywhere (0.0.0.0/0)
+     (Render uses dynamic IPs so you need to allow all)
+  5. Get connection string: Connect → Drivers → copy the URI
+     It looks like: mongodb+srv://syncroom_user:PASSWORD@cluster.mongodb.net/sync_db?retryWrites=true&w=majority
+  6. Save this URI — you will need it in step 2
+
+STEP 2 — DEPLOY BACKEND ON RENDER
+  1. Go to dashboard.render.com and create a free account
+  2. New → Web Service
+  3. Connect your GitHub account and select the sync-room repository
+  4. Settings:
+       Name: syncroom-api (or whatever you want)
+       Root Directory: sync-room-node
+       Runtime: Node
+       Build Command: npm ci --omit=dev
+       Start Command: node src/server.js
+       Branch: main
+  5. Add Environment Variables (click "Advanced" or go to Environment tab):
+       NODE_ENV = production
+       LOG_LEVEL = warn
+       PORT = 8000
+       MONGO_URI = (paste your Atlas URI from step 1)
+       CLIENT_URL = (leave blank for now, fill in after step 3)
+  6. Click "Create Web Service"
+  7. Wait for it to deploy. Your backend URL will be something like:
+       https://syncroom-api.onrender.com
+  8. Save this URL — you need it in step 3
+
+STEP 3 — DEPLOY FRONTEND ON VERCEL
+  1. Go to vercel.com and create a free account
+  2. New Project → Import Git Repository → select sync-room
+  3. Configure project:
+       Root Directory: sync-room-ui
+       Framework Preset: Vite (auto-detected)
+       Build Command: npm run build (auto-filled)
+       Output Directory: dist (auto-filled)
+  4. Add Environment Variables:
+       VITE_API_URL = https://syncroom-api.onrender.com
+       (this is the Render URL from step 2)
+  5. Click Deploy
+  6. Wait for it to build and deploy. Your frontend URL will be something like:
+       https://syncroom.vercel.app
+  7. Save this URL — you need it in the next step
+
+STEP 4 — UPDATE BACKEND CORS
+  1. Go back to Render dashboard → syncroom-api → Environment
+  2. Update CLIENT_URL to your Vercel URL:
+       CLIENT_URL = https://syncroom.vercel.app
+  3. Render will automatically redeploy
+  4. Wait for it to finish
+
+STEP 5 — TEST EVERYTHING
+  1. Open your Vercel URL in two different browsers
+  2. Create a room in browser 1
+  3. Copy the room code and join in browser 2
+  4. Test: chat, playback controls, reactions
+  5. Check browser console for errors (F12 → Console)
+
+  Common issues:
+  - CORS error → CLIENT_URL on Render is wrong (should match Vercel URL exactly, no trailing slash)
+  - Socket fails → VITE_API_URL on Vercel is wrong (should match Render URL exactly)
+  - 502 error → Render cold start (wait 30 seconds and try again — free tier sleeps)
+  - "Missing env var" → MONGO_URI or CLIENT_URL not set on Render
+
+
+================================================================
+ENVIRONMENT VARIABLES REFERENCE
+================================================================
+
+BACKEND (set on Render):
+  MONGO_URI    = mongodb+srv://user:pass@cluster.mongodb.net/sync_db?retryWrites=true&w=majority
+  CLIENT_URL   = https://your-frontend.vercel.app    (no trailing slash)
+  PORT         = 8000
+  NODE_ENV     = production
+  LOG_LEVEL    = warn
+
+FRONTEND (set on Vercel):
+  VITE_API_URL = https://your-backend.onrender.com   (no trailing slash)
+
+FOR LOCAL DEVELOPMENT:
+  Backend .env:
+    PORT=8000
+    CLIENT_URL=http://localhost:5173
+    MONGO_URI=mongodb+srv://...
+    NODE_ENV=development
+    LOG_LEVEL=debug
+
+  Frontend .env:
+    VITE_API_URL=http://localhost:8000
+
+FOR DOCKER:
+  Backend .env (same as local)
+  VITE_API_URL should be EMPTY or NOT SET
+  (nginx proxies /api and /socket.io to the backend container automatically)
+
+
+================================================================
+V6 REMAINING PHASES (NOT YET DONE)
+================================================================
+
+  6.7  — Security (Helmet, rate limiting, input sanitization)
+  6.8  — Logging (Winston/Pino structured logs)
+  6.9  — Monitoring (health endpoint metrics, uptime)
+  6.10 — Performance (MongoDB indexes, bundle analysis)
+  6.11 — Testing (Jest backend, Playwright E2E)
+  6.12 — Documentation (docs/ folder with API, architecture, socket events)
+  6.13 — Portfolio assets (diagrams, screenshots, GIFs)
+  6.14 — Resume ready (live demo, GitHub polish)
+
+
+================================================================
+END OF SUMMARY
+================================================================

@@ -1,0 +1,102 @@
+.nc-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: 320px;
+  width: 100%;
+}
+
+/* ── Toast ── */
+.nc-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(16px);
+  pointer-events: all;
+  position: relative;
+  overflow: hidden;
+  animation: nc-slide-in .22s cubic-bezier(.22,1,.36,1);
+}
+
+@keyframes nc-slide-in {
+  from { opacity: 0; transform: translateX(24px) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+.nc-toast-success {
+  background: rgba(17,37,20,.92);
+  border-color: rgba(34,197,94,.25);
+}
+.nc-toast-info {
+  background: rgba(14,20,50,.92);
+  border-color: rgba(139,92,246,.2);
+}
+.nc-toast-warning {
+  background: rgba(30,24,10,.92);
+  border-color: rgba(245,158,11,.25);
+}
+.nc-toast-error {
+  background: rgba(37,14,14,.92);
+  border-color: rgba(239,68,68,.25);
+}
+
+.nc-toast-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.nc-toast-msg {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e5e7eb;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.nc-toast-close {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+.nc-toast-close:hover { color: #9ca3af; }
+
+/* ── Progress bar ── */
+.nc-toast-progress {
+  position: absolute;
+  bottom: 0; left: 0;
+  height: 2px;
+  width: 100%;
+  background: rgba(255,255,255,.15);
+  transform-origin: left;
+  animation: nc-shrink linear forwards;
+}
+
+@keyframes nc-shrink {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+.nc-toast-success .nc-toast-progress { background: rgba(34,197,94,.4); }
+.nc-toast-info    .nc-toast-progress { background: rgba(139,92,246,.4); }
+.nc-toast-warning .nc-toast-progress { background: rgba(245,158,11,.4); }
+.nc-toast-error   .nc-toast-progress { background: rgba(239,68,68,.4); }
+
+@media (max-width: 480px) {
+  .nc-container { bottom: 12px; right: 12px; left: 12px; }
+}

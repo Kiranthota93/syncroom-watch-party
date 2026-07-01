@@ -1,0 +1,37 @@
+services:
+
+  # ── Backend (Node.js + Express + Socket.IO) ─────────────────────────────────
+  backend:
+    build:
+      context: ./sync-room-node
+      dockerfile: Dockerfile
+    container_name: syncroom-backend
+    env_file:
+      - ./sync-room-node/.env
+    environment:
+      NODE_ENV: production
+    expose:
+      - "8000"          # internal only — nginx reaches it, host does not
+    restart: unless-stopped
+    networks:
+      - syncroom
+
+  # ── Frontend (Vite build served by nginx) ───────────────────────────────────
+  frontend:
+    build:
+      context: ./sync-room-ui
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""  # empty = relative URLs, nginx proxies to backend
+    container_name: syncroom-frontend
+    ports:
+      - "80:80"           # public entry point
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - syncroom
+
+networks:
+  syncroom:
+    driver: bridge
