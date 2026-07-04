@@ -1,21 +1,37 @@
 {
   "name": "sync-room-node",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/server.js",
+  "homepage": "https://github.com/Kiranthota93/syncroom-watch-party",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "engines": {
+  "node": "18.x"
+},
+  "keywords": [
+    "socket.io",
+    "express",
+    "mongodb",
+    "watch-party",
+    "syncroom",
+    "realtime",
+    "nodejs"
+  ],
+  "author": "Kiran Thota",
+  "description": "Backend for SyncRoom - Real-time watch party platform using Express, Socket.IO and MongoDB.",
+  "license": "MIT",
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mongoose": "^8.24.0",
     "socket.io": "^4.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kiranthota93/syncroom-watch-party.git"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

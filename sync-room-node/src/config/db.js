@@ -4,7 +4,10 @@ const config   = require("./index");
 const { createLogger } = require("../utils/logger");
 
 dns.setDefaultResultOrder("ipv4first");
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
+if (config.isDev) {
+  dns.setServers(["8.8.8.8", "8.8.4.4"]);
+}
 
 const log = createLogger("db");
 
@@ -23,8 +26,9 @@ const connectDB = async () => {
   } catch (error) {
     log.error("MongoDB connection failed", {
       message: error.message,
-      hint:    "Check Atlas IP whitelist, internet connection, or flush DNS cache",
+      hint: "Check Atlas IP whitelist, internet connection, or flush DNS cache",
     });
+    throw error;
   }
 };
 

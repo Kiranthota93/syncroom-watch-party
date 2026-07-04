@@ -21,8 +21,9 @@ const config = {
   port:      parseInt(process.env.PORT ?? '8000', 10),
   clientUrl: required('CLIENT_URL'),
   mongoUri:  required('MONGO_URI'),
-  nodeEnv:   process.env.NODE_ENV ?? 'development',
-  logLevel:  process.env.LOG_LEVEL ?? 'info',
+  nodeEnv:   process.env.NODE_ENV ?? 'production',
+  isDev:     process.env.NODE_ENV !== 'production',
+  // logLevel:  process.env.LOG_LEVEL ?? 'info',
 };
 
 Object.defineProperties(config, {

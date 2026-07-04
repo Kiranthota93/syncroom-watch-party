@@ -1,11 +1,14 @@
 import { io } from "socket.io-client";
 
-// In development: VITE_API_URL = "http://localhost:8000" — connect directly.
+const SOCKET_URL = import.meta.env.VITE_API_URL;
+
 // In production Docker: var is unset — io() connects to the page origin
 // and nginx proxies /socket.io → backend container.
-const socket = io(import.meta.env.VITE_API_URL || undefined, {
-  autoConnect:     false,
+
+const socket = io(SOCKET_URL, {
+  autoConnect: false,
   withCredentials: true,
+  transports: ["websocket", "polling"],
 });
 
 export default socket;
