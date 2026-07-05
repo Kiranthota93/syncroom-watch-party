@@ -28,7 +28,7 @@ const getControllerContext = async (socketId, invite_token) => {
 const init = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: config.clientUrl,
+      origin: [config.clientUrl, "http://localhost:5173"],
       methods: ["GET", "POST"],
       credentials: true,
     },

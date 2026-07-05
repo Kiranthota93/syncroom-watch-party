@@ -8,7 +8,7 @@ const app = express();
 app.disable("x-powered-by");
 
 app.use(cors({
-  origin: config.clientUrl,
+  origin: [config.clientUrl, "http://localhost:5173"],
   credentials: true,
 }));
 

@@ -63,37 +63,43 @@ function Room() {
 
     fetchRoom();
 
-    socket.on("connect", () => {
+    const onConnect = () => {
       setConnected(true);
-      socket.emit(SOCKET.JOIN_ROOM, {
-        invite_token,
-        participant_id: user.participant_id,
-      });
-    });
-    socket.on("disconnect", () => setConnected(false));
+      if (user?.participant_id) {
+        socket.emit(SOCKET.JOIN_ROOM, {
+          invite_token,
+          participant_id: user.participant_id,
+        });
+      }
+    };
 
-    socket.connect();
-
-    socket.on(SOCKET.ROOM_UPDATED, ({ room }) => {
-      setRoom(room);
-    });
-
-    socket.on(SOCKET.ROOM_ENDED, () => {
+    const onDisconnect = () => setConnected(false);
+    const onRoomUpdated = ({ room: nextRoom }) => setRoom(nextRoom);
+    const onRoomEnded = () => {
       localStorage.removeItem("syncroom_user");
       navigate("/");
-    });
-
-    socket.on(SOCKET.PARTICIPANT_KICKED, () => {
+    };
+    const onParticipantKicked = () => {
       localStorage.removeItem("syncroom_user");
       navigate("/?kicked=1");
-    });
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on(SOCKET.ROOM_UPDATED, onRoomUpdated);
+    socket.on(SOCKET.ROOM_ENDED, onRoomEnded);
+    socket.on(SOCKET.PARTICIPANT_KICKED, onParticipantKicked);
+
+    if (!socket.connected) {
+      socket.connect();
+    }
 
     return () => {
-      socket.off("connect");
-      socket.off("disconnect");
-      socket.off(SOCKET.ROOM_UPDATED);
-      socket.off(SOCKET.ROOM_ENDED);
-      socket.off(SOCKET.PARTICIPANT_KICKED);
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off(SOCKET.ROOM_UPDATED, onRoomUpdated);
+      socket.off(SOCKET.ROOM_ENDED, onRoomEnded);
+      socket.off(SOCKET.PARTICIPANT_KICKED, onParticipantKicked);
       socket.disconnect();
     };
   }, [fetchRoom, invite_token, navigate]);
