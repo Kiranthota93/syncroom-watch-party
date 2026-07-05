@@ -25,6 +25,7 @@ app.get("/", (req, res) => {
 
 app.get("/health", (req, res) => {
   res.json({
+    message: "SyncRoom API is healthy",
     status: "ok",
     uptime: process.uptime(),
   });
