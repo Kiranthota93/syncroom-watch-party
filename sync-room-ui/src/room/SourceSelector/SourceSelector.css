@@ -49,6 +49,18 @@
   color: #a78bfa !important;
 }
 
+.source-opt:disabled {
+  cursor: default;
+  opacity: .55;
+}
+.source-opt:disabled:hover {
+  background: rgba(255,255,255,.03);
+  color: #9ca3af;
+}
+.source-opt-active:disabled {
+  opacity: .85;
+}
+
 .source-check {
   font-size: 11px;
   color: #8b5cf6;

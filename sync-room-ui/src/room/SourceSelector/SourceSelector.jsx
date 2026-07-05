@@ -22,9 +22,16 @@ const IconFilm = () => (
 
 function SourceSelector({ room, refreshRoom }) {
   const current = room.content_source?.type;
+  const youtubeAllowed = room.settings?.allow_youtube !== false;
+  const localVideoAllowed = room.settings?.allow_local_video !== false;
+
+  const currentUser = JSON.parse(localStorage.getItem("syncroom_user") || "{}");
+  const isController = currentUser?.participant_id === room.controller_participant_id;
 
   const selectSource = async (type) => {
     if (type === current) return;
+    if (type === "youtube" && !youtubeAllowed) return;
+    if (type === "local_video" && !localVideoAllowed) return;
     try {
       const user = JSON.parse(localStorage.getItem("syncroom_user") || "{}");
       await nodeAPI.post("/rooms/content", {
@@ -42,20 +49,28 @@ function SourceSelector({ room, refreshRoom }) {
     <div className="source-bar">
       <span className="source-bar-label">Source</span>
       <div className="source-bar-options">
-        <button
-          className={`source-opt ${current === "youtube" ? "source-opt-active" : ""}`}
-          onClick={() => selectSource("youtube")}
-        >
-          <IconYT /> YouTube
-          {current === "youtube" && <span className="source-check">✓</span>}
-        </button>
-        <button
-          className={`source-opt ${current === "local_video" ? "source-opt-active" : ""}`}
-          onClick={() => selectSource("local_video")}
-        >
-          <IconFilm /> Local Video
-          {current === "local_video" && <span className="source-check">✓</span>}
-        </button>
+        {youtubeAllowed && (
+          <button
+            className={`source-opt ${current === "youtube" ? "source-opt-active" : ""}`}
+            onClick={() => selectSource("youtube")}
+            disabled={!isController}
+            title={isController ? undefined : "Only the controller can change the source"}
+          >
+            <IconYT /> YouTube
+            {current === "youtube" && <span className="source-check">✓</span>}
+          </button>
+        )}
+        {localVideoAllowed && (
+          <button
+            className={`source-opt ${current === "local_video" ? "source-opt-active" : ""}`}
+            onClick={() => selectSource("local_video")}
+            disabled={!isController}
+            title={isController ? undefined : "Only the controller can change the source"}
+          >
+            <IconFilm /> Local Video
+            {current === "local_video" && <span className="source-check">✓</span>}
+          </button>
+        )}
       </div>
     </div>
   );

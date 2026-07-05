@@ -132,7 +132,10 @@ function Room() {
               room={room}
               refreshRoom={fetchRoom}
             />
-            <ReactionOverlay inviteToken={invite_token} />
+            <ReactionOverlay
+              inviteToken={invite_token}
+              enabled={room.settings?.allow_emoji_reactions !== false}
+            />
           </div>
 
           <SourceSelector

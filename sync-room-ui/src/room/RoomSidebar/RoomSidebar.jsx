@@ -49,6 +49,7 @@ export default function RoomSidebar({ room, refreshRoom, chat }) {
             currentParticipantId={chat.participantId}
             onVisible={chat.markRead}
             onHidden={chat.markHidden}
+            disabled={room.settings?.allow_chat === false}
           />
         )}
         {tab === 'info' && (

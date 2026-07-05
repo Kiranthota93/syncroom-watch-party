@@ -59,6 +59,36 @@
   cursor: default;
 }
 
+/* Blocks clicks on YouTube's paused/ended suggested-video overlay for the
+   controller, without covering the native control strip at the bottom
+   (so pause/seek/volume/fullscreen still work). */
+.player-suggest-guard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 48px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.player-suggest-guard-icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.85);
+  color: #fff;
+  font-size: 22px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
 /* ── Player meta bar (local video) ── */
 .player-meta-bar {
   position: absolute;

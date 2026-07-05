@@ -221,6 +221,15 @@
   background: rgba(10,15,32,.6);
 }
 
+.chat-disabled-notice {
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255,255,255,.05);
+  background: rgba(10,15,32,.6);
+  color: rgba(255,255,255,.5);
+  font-size: 13px;
+  text-align: center;
+}
+
 .chat-input {
   flex: 1;
   resize: none;

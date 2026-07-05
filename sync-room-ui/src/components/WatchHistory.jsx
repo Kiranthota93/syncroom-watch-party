@@ -60,8 +60,9 @@ ContentIcon.propTypes = {
 };
 
 function WatchHistory() {
-  const [sessions, setSessions] = useState([]);
-  const [loading,  setLoading]  = useState(true);
+  const [sessions, setSessions]   = useState([]);
+  const [loading,  setLoading]    = useState(true);
+  const [expanded, setExpanded]   = useState(false);
 
   useEffect(() => {
     const client_id = getClientId();
@@ -98,11 +99,25 @@ function WatchHistory() {
 
   return (
     <section className="wh-section">
-      <div className="wh-header">
+      <button
+        type="button"
+        className="wh-header wh-header-toggle"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
         <h2 className="wh-title">Watch History</h2>
         <span className="wh-count">{sessions.length}</span>
-      </div>
+        <svg
+          className={`wh-chevron ${expanded ? "wh-chevron-open" : ""}`}
+          viewBox="0 0 24 24" width="16" height="16"
+          fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
 
+      {expanded && (
       <div className="wh-list">
         {sessions.map((s) => (
           <div key={s._id} className="wh-card">
@@ -136,6 +151,7 @@ function WatchHistory() {
           </div>
         ))}
       </div>
+      )}
     </section>
   );
 }

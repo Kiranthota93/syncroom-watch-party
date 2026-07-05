@@ -27,7 +27,7 @@ function FloatingReaction({ id, emoji, x, duration, onDone }) {
 }
 
 /** Overlay that renders floating reactions + the picker bar. */
-export default function ReactionOverlay({ inviteToken }) {
+export default function ReactionOverlay({ inviteToken, enabled = true }) {
   const [reactions, setReactions] = useState([]);
   const cooldownRef = useRef({});
 
@@ -75,18 +75,20 @@ export default function ReactionOverlay({ inviteToken }) {
       </div>
 
       {/* Picker bar */}
-      <div className="reaction-bar" role="toolbar" aria-label="Emoji reactions">
-        {EMOJIS.map((emoji) => (
-          <button
-            key={emoji}
-            className="reaction-btn"
-            onClick={() => sendReaction(emoji)}
-            aria-label={`React with ${emoji}`}
-          >
-            {emoji}
-          </button>
-        ))}
-      </div>
+      {enabled && (
+        <div className="reaction-bar" role="toolbar" aria-label="Emoji reactions">
+          {EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              className="reaction-btn"
+              onClick={() => sendReaction(emoji)}
+              aria-label={`React with ${emoji}`}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
     </>
   );
 }

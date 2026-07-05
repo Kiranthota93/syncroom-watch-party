@@ -286,7 +286,7 @@ function RoomHeader({ room, refreshRoom, connected, onOpenPreferences }) {
           </>
         )}
 
-        {!amIHost && !amIController && (
+        {!amIHost && !amIController && room.settings?.allow_controller_requests !== false && (
           <button
             className={`header-btn ${requestSent ? 'req-sent' : ''}`}
             onClick={requestControl}

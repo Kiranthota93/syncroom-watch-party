@@ -474,6 +474,20 @@ const updateContentSource = async (req, res) => {
       });
     }
 
+    if (content_source.type === "local_video" && room.settings?.allow_local_video === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Local video is disabled for this room",
+      });
+    }
+
+    if (content_source.type === "youtube" && room.settings?.allow_youtube === false) {
+      return res.status(403).json({
+        success: false,
+        message: "YouTube is disabled for this room",
+      });
+    }
+
     room.content_source = {
       type: content_source.type,
       metadata: content_source.metadata || {},

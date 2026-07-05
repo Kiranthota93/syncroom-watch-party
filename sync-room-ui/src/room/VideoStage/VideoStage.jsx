@@ -115,7 +115,12 @@ function VideoStage({ room, refreshRoom }) {
   const [urlInput, setUrlInput] = useState("");
   const [urlError, setUrlError] = useState("");
 
+  const youtubeAllowed = room.settings?.allow_youtube !== false;
+  const localVideoAllowed = room.settings?.allow_local_video !== false;
+
   const selectSource = async (type) => {
+    if (type === "youtube" && !youtubeAllowed) return;
+    if (type === "local_video" && !localVideoAllowed) return;
     try {
       const user = JSON.parse(localStorage.getItem("syncroom_user") || "{}");
       await nodeAPI.post("/rooms/content", {
@@ -131,6 +136,10 @@ function VideoStage({ room, refreshRoom }) {
   const [loading, setLoading] = useState(false);
   const [viewerTime, setViewerTime] = useState(0);
   const [viewerDuration, setViewerDuration] = useState(0);
+
+  // Tracks the raw YouTube player state (0 ended, 1 playing, 2 paused, 3 buffering)
+  // so the controller's suggestion-click guard (below) knows when to appear.
+  const [ytPlayerState, setYtPlayerState] = useState(null);
 
   // Holds the active MediaProvider instance
   const providerRef    = useRef(null);
@@ -469,6 +478,13 @@ const [localFile,       setLocalFile]       = useState(null);
     }
   }, [videoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset the tracked YouTube player state whenever the video changes, so a
+  // stale "paused"/"ended" value from the previous video can't leave the
+  // suggestion-click guard (below) showing over a freshly loaded video.
+  useEffect(() => {
+    setYtPlayerState(null);
+  }, [videoId]);
+
   // Viewer timeline polling — works for both YouTube and local video
   const hasActiveContent = Boolean(videoId || localFile);
 
@@ -563,6 +579,7 @@ const [localFile,       setLocalFile]       = useState(null);
   };
 
   const handleStateChange = (event) => {
+    setYtPlayerState(event.data);
     providerRef.current?.notifyStateChange(
       event.data,
       event.target.getCurrentTime()
@@ -622,12 +639,22 @@ const [localFile,       setLocalFile]       = useState(null);
         <div className="video-stage-content">
           <div className="stage-icon"><IconPlayCircle /></div>
           <h2>No content selected yet</h2>
-          <p>Pick a YouTube video or a local file below —<br />your friends will see it instantly.</p>
+          {isController ? (
+            <p>Pick a YouTube video or a local file below —<br />your friends will see it instantly.</p>
+          ) : (
+            <p>Waiting for {controllerName} to pick something to watch…</p>
+          )}
           <div className="room-count"><IconUsers /> {onlineCount} online</div>
-          <div className="source-buttons">
-            <button className="source-btn" onClick={() => selectSource("youtube")}><IconScreen /> YouTube</button>
-            <button className="source-btn" onClick={() => selectSource("local_video")}><IconFilm /> Local Video</button>
-          </div>
+          {isController && (
+            <div className="source-buttons">
+              {youtubeAllowed && (
+                <button className="source-btn" onClick={() => selectSource("youtube")}><IconScreen /> YouTube</button>
+              )}
+              {localVideoAllowed && (
+                <button className="source-btn" onClick={() => selectSource("local_video")}><IconFilm /> Local Video</button>
+              )}
+            </div>
+          )}
         </div>
       </section>
     );
@@ -702,6 +729,27 @@ const [localFile,       setLocalFile]       = useState(null);
             onEnd={handleEnd}
             onError={handleYouTubeError}
           />
+
+          {/* Blocks clicks on YouTube's own paused/ended suggested-video overlay,
+              which would otherwise swap the iframe to a different video for this
+              user only (no socket event fires — it's a native YouTube UI action).
+              Leaves the bottom native control strip clickable so pause/seek/volume
+              still work; clicking the guard itself resumes playback. */}
+          {isController && (ytPlayerState === 2 || ytPlayerState === 0) && (
+            <div
+              className="player-suggest-guard"
+              onClick={() => {
+                if (ytPlayerState === 0) providerRef.current?.seekTo(0);
+                providerRef.current?.play();
+              }}
+              role="button"
+              aria-label={ytPlayerState === 0 ? "Replay video" : "Resume video"}
+            >
+              <span className="player-suggest-guard-icon">
+                {ytPlayerState === 0 ? "↺" : "▶"}
+              </span>
+            </div>
+          )}
 
           {!isController && (
             <>

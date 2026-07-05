@@ -11,11 +11,28 @@ import MediaProvider from './MediaProvider';
  * YouTube getPlayerState() values:
  *   -1 unstarted  |  0 ended  |  1 playing  |  2 paused  |  3 buffering
  */
+// How often to sample getCurrentTime() while playing, so the pre-seek
+// origin is known when buffering starts (ms). Mirrors the ~250ms cadence
+// of HTML5 'timeupdate' that LocalVideoProvider relies on for the same reason.
+const POSITION_POLL_MS = 250;
+
 class YouTubeProvider extends MediaProvider {
   constructor() {
     super();
-    this._player = null;
-    this._ready = false;
+    this._player        = null;
+    this._ready         = false;
+
+    // Last position sampled while actually playing (state 1). YouTube's
+    // getCurrentTime() already reports the SEEK TARGET the instant the
+    // buffering state (3) fires — same quirk as Chrome's synchronous
+    // currentTime update for HTML5 <video>. Without this, handleBufferingStart
+    // records target as the origin, the origin→target delta collapses to ~0,
+    // and SeekDetector never recognizes a real seek — so playback:seek is
+    // never emitted, the server's playback_state goes stale, and the next
+    // heartbeat's drift correction snaps the player back to the pre-seek
+    // trajectory (the "jumps, then rewinds a second later" bug).
+    this._lastKnownTime = null;
+    this._pollTimer     = null;
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────
@@ -24,7 +41,18 @@ class YouTubeProvider extends MediaProvider {
   attachPlayer(ytPlayer) {
     this._player = ytPlayer;
     this._ready = true;
+    this._lastKnownTime = ytPlayer.getCurrentTime();
+    this._startPolling();
     this.emit('ready', { duration: ytPlayer.getDuration() });
+  }
+
+  _startPolling() {
+    clearInterval(this._pollTimer);
+    this._pollTimer = setInterval(() => {
+      if (this._player?.getPlayerState?.() === 1) {
+        this._lastKnownTime = this._player.getCurrentTime();
+      }
+    }, POSITION_POLL_MS);
   }
 
   load() {
@@ -33,6 +61,8 @@ class YouTubeProvider extends MediaProvider {
   }
 
   destroy() {
+    clearInterval(this._pollTimer);
+    this._pollTimer = null;
     this._player?.stopVideo?.();
     this._player = null;
     this._ready = false;
@@ -74,6 +104,13 @@ class YouTubeProvider extends MediaProvider {
   }
 
   notifyStateChange(ytState, currentTime) {
+    // On entering buffering (3), report the pre-seek origin instead of the
+    // target so SeekDetector can compute a real origin→target delta.
+    // See the constructor comment on _lastKnownTime for why this is needed.
+    if (ytState === 3 && this._lastKnownTime != null) {
+      this.emit('statechange', { state: ytState, currentTime: this._lastKnownTime });
+      return;
+    }
     this.emit('statechange', { state: ytState, currentTime });
   }
 

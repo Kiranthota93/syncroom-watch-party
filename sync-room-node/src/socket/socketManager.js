@@ -209,6 +209,8 @@ const init = (httpServer) => {
         const room = await Room.findOne({ invite_token, status: "active" });
         if (!room) return;
 
+        if (room.settings?.allow_controller_requests === false) return;
+
         const requester = room.participants.find(
           (p) => p.participant_id === participant_id && p.is_online
         );
@@ -243,6 +245,7 @@ const init = (httpServer) => {
         if (!ALLOWED_EMOJIS.has(emoji)) return;
         const room = await Room.findOne({ invite_token, status: "active" });
         if (!room) return;
+        if (room.settings?.allow_emoji_reactions === false) return;
         const participant = room.participants.find((p) => p.socket_id === socket.id);
         if (!participant) return;
         io.to(invite_token).emit(SOCKET.REACTION_EMIT, {
@@ -263,6 +266,7 @@ const init = (httpServer) => {
 
         const room = await Room.findOne({ invite_token, status: "active" });
         if (!room) return;
+        if (room.settings?.allow_chat === false) return;
 
         const participant = room.participants.find(
           (p) => p.participant_id === participant_id && p.is_online

@@ -17,6 +17,25 @@
   margin-bottom: 14px;
 }
 
+.wh-header-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.wh-chevron {
+  margin-left: auto;
+  color: #6b7280;
+  transition: transform 0.2s ease;
+}
+.wh-chevron-open {
+  transform: rotate(180deg);
+}
+
 .wh-title {
   margin: 0;
   font-size: 18px;

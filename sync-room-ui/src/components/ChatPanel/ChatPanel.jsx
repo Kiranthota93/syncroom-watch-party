@@ -94,7 +94,7 @@ TypingIndicator.propTypes = {
 
 export default function ChatPanel({
   messages, onSend, onTyping, typingUsers,
-  currentParticipantId, onVisible, onHidden,
+  currentParticipantId, onVisible, onHidden, disabled,
 }) {
   const [input,      setInput]      = useState('');
   const [showEmojis, setShowEmojis] = useState(false);
@@ -214,43 +214,47 @@ export default function ChatPanel({
       </div>
 
       {/* Input row */}
-      <div className="chat-input-row">
-        {/* Emoji picker anchored inside the row's position:relative */}
-        {showEmojis && (
-          <EmojiPicker onSelect={insertEmoji} onClose={() => setShowEmojis(false)} />
-        )}
+      {disabled ? (
+        <div className="chat-disabled-notice">Chat has been disabled by the host</div>
+      ) : (
+        <div className="chat-input-row">
+          {/* Emoji picker anchored inside the row's position:relative */}
+          {showEmojis && (
+            <EmojiPicker onSelect={insertEmoji} onClose={() => setShowEmojis(false)} />
+          )}
 
-        <button
-          className={`emoji-toggle ${showEmojis ? 'emoji-toggle-active' : ''}`}
-          onClick={() => setShowEmojis((v) => !v)}
-          aria-label="Emoji picker"
-          title="Emoji picker"
-        >
-          😊
-        </button>
+          <button
+            className={`emoji-toggle ${showEmojis ? 'emoji-toggle-active' : ''}`}
+            onClick={() => setShowEmojis((v) => !v)}
+            aria-label="Emoji picker"
+            title="Emoji picker"
+          >
+            😊
+          </button>
 
-        <textarea
-          ref={inputRef}
-          className="chat-input"
-          placeholder="Message… (Enter to send)"
-          value={input}
-          rows={1}
-          onChange={handleInputChange}
-          onKeyDown={onKeyDown}
-          maxLength={500}
-        />
+          <textarea
+            ref={inputRef}
+            className="chat-input"
+            placeholder="Message… (Enter to send)"
+            value={input}
+            rows={1}
+            onChange={handleInputChange}
+            onKeyDown={onKeyDown}
+            maxLength={500}
+          />
 
-        <button
-          className="chat-send-btn"
-          onClick={submit}
-          disabled={!input.trim()}
-          aria-label="Send"
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-            <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
-          </svg>
-        </button>
-      </div>
+          <button
+            className="chat-send-btn"
+            onClick={submit}
+            disabled={!input.trim()}
+            aria-label="Send"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+              <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -263,4 +267,5 @@ ChatPanel.propTypes = {
   currentParticipantId: PropTypes.string,
   onVisible:            PropTypes.func,
   onHidden:             PropTypes.func,
+  disabled:             PropTypes.bool,
 };
