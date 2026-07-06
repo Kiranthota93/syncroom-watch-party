@@ -12,6 +12,7 @@
  * log.error("Database failed", error);
  */
 
+const util = require("util");
 const config = require("../config");
 
 const LEVELS = {
@@ -44,15 +45,24 @@ const write = (level, context, message, data) => {
     };
   }
 
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    level,
-    context,
-    message,
-    ...payload,
-  };
+  let output;
 
-  const output = JSON.stringify(logEntry);
+  if (config.isDev) {
+    // nodemon-style: [context] message  { extra fields }
+    const extra = Object.keys(payload).length
+      ? " " + util.inspect(payload, { colors: true, breakLength: Infinity, depth: null })
+      : "";
+    output = `[${context}] ${message}${extra}`;
+  } else {
+    // Production: single-line JSON for log aggregators.
+    output = JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level,
+      context,
+      message,
+      ...payload,
+    });
+  }
 
   switch (level) {
     case "debug":
