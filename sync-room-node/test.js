@@ -1,6 +1,5 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
-
 (async () => {
   try {
     console.log("URI:", process.env.MONGO_URI);
