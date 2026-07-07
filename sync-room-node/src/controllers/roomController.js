@@ -217,8 +217,9 @@ const getRoomByInviteToken = async (req, res) => {
       room
     });
 
-  } catch (err) {
+  } catch (error) {
     return res.status(400).json({
+      error : error.message,
       success: false,
       message: "Invalid invite_token",
     });
@@ -247,6 +248,7 @@ const getRoomByRoomCode = async (req, res) => {
 
   } catch (err) {
     return res.status(400).json({
+      error : err.message,
       success: false,
       message: "Invalid room code",
     });

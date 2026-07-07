@@ -5,11 +5,14 @@
   "homepage": "https://github.com/Kiranthota93/syncroom-watch-party",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "lint": "eslint .",
+    "test": "node --test",
+    "syntax-check": "node --check src/server.js"
   },
   "engines": {
-  "node": "22.x"
-},
+    "node": ">=18 <=22"
+  },
   "keywords": [
     "socket.io",
     "express",
@@ -34,6 +37,9 @@
     "url": "https://github.com/Kiranthota93/syncroom-watch-party.git"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
+    "globals": "^17.7.0",
     "nodemon": "^3.1.14"
   }
 }
