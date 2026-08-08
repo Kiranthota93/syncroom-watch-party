@@ -101,6 +101,18 @@ function StreamedVideoPlayer({
           <div className="svp-viewer-banner">
             <span className="svp-viewer-dot" /> Controlled by <strong>{controllerName}</strong>
           </div>
+
+          {/* Personal view setting, not a playback command — every participant
+              gets it, not just whoever holds control. */}
+          <button
+            className="svp-fullscreen-btn"
+            onClick={onFullscreenToggle}
+            aria-label="Fullscreen"
+            title="Fullscreen (F)"
+          >
+            <IconExpand />
+          </button>
+
           <div className="svp-viewer-timeline">
             <span>{fmt(viewerTime)}</span>
             <div className="svp-viewer-bar">

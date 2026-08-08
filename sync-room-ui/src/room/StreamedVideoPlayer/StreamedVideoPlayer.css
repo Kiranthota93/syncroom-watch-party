@@ -97,6 +97,29 @@
   background: var(--success);
 }
 
+/* Fullscreen for non-controller viewers — top-right, opposite the "Controlled
+   by" banner so they never collide. */
+.svp-fullscreen-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  cursor: pointer;
+  transition: background .15s;
+}
+.svp-fullscreen-btn:hover { background: rgba(0, 0, 0, 0.8); }
+.svp-fullscreen-btn svg { width: 18px; height: 18px; }
+
 .svp-viewer-timeline {
   position: absolute;
   left: 0;

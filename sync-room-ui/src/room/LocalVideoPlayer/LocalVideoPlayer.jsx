@@ -446,7 +446,7 @@ export default function LocalVideoPlayer({
         </button>
       </div>
 
-      {/* ── Non-controller: viewer timeline (bottom) ─────── */}
+      {/* ── Non-controller: viewer timeline + fullscreen (bottom) ─────── */}
       {!isController && (
         <div className="lp-viewer-timeline">
           <span className="lp-time-chip">{fmt(viewerTime)}</span>
@@ -457,6 +457,17 @@ export default function LocalVideoPlayer({
             />
           </div>
           <span className="lp-time-chip">{fmt(viewerDuration)}</span>
+
+          {/* Personal view setting, not a playback command — every participant
+              gets it, not just whoever holds control. */}
+          <button
+            className="lp-viewer-fullscreen-btn"
+            onClick={onFullscreenToggle}
+            aria-label={ctrlFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            title="Fullscreen (F)"
+          >
+            {ctrlFullscreen ? <IconCompress /> : <IconExpand />}
+          </button>
         </div>
       )}
 

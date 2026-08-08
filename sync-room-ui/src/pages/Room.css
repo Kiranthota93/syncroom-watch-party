@@ -46,22 +46,12 @@
 }
 
 /* ── Theater mode ──
-   The header lifts out of the flow and becomes a hover-revealed overlay, so the
-   stage gets the entire column. Escape exits, and the header returns on hover,
-   so the toggle is never unreachable. */
+   The header lifts out of the flow and overlays the stage, so the video gets
+   the entire column. It stays visible: hiding it behind a hover target meant
+   the controls played hide-and-seek with the mouse, and the toggle out of
+   theater mode could feel unreachable. Escape also exits. */
 .room-page-theater .room-layout { padding: 0; }
 .room-page-theater .room-main { gap: 0; }
-
-/* Hover strip along the top edge that reveals the hidden header. Sits in the
-   DOM immediately before it so a plain sibling selector does the work. */
-.theater-reveal {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 10px;
-  z-index: 41;
-}
 
 .room-page-theater .room-header {
   position: absolute;
@@ -69,18 +59,6 @@
   left: 0;
   right: 0;
   z-index: 40;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-8px);
-  transition: opacity .18s ease, transform .18s ease;
-}
-
-.theater-reveal:hover + .room-header,
-.room-page-theater .room-header:hover,
-.room-page-theater .room-header:focus-within {
-  opacity: 1;
-  pointer-events: auto;
-  transform: none;
 }
 
 /* ── Shared bottom dock ──
@@ -98,35 +76,17 @@
   justify-content: center;
   gap: 10px;
   padding-top: 2px;
-
-  opacity: 0.75;
-  transition: opacity 0.2s ease;
 }
 
-.room-dock:hover,
-.room-dock:focus-within {
-  opacity: 1;
-}
-.room-page:not(.room-page-playing) .room-dock {
-  opacity: 1;
-}
-
-/* Theater mode — the dock lifts out of the flow and auto-hides with the header,
-   so the frame gets the entire column. */
+/* Theater mode — the dock lifts out of the flow so the frame gets the entire
+   column, but stays visible rather than auto-hiding (same reasoning as the
+   header above). */
 .room-page-theater .room-dock {
   position: fixed;
   left: 50%;
   bottom: 16px;
   transform: translateX(-50%);
   z-index: 30;
-  opacity: 0;
-  pointer-events: none;
-}
-.room-page-theater .room-dock:hover,
-.room-page-theater .room-dock:focus-within,
-.room-page-theater:hover .room-dock {
-  opacity: 1;
-  pointer-events: auto;
 }
 
 /* Narrow screens: the dock stays one row by dropping the button labels down to

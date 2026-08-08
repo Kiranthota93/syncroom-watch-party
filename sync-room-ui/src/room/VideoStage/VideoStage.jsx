@@ -349,13 +349,27 @@ const [localFile,       setLocalFile]       = useState(null);
     }
   };
 
-  // Keyboard shortcuts — only active when a custom (local/streamed) player is loaded
+  // Keyboard shortcuts — only active when a custom (local/streamed) player is loaded.
+  // Fullscreen and Escape work for every participant, not just the controller —
+  // it's a personal view setting, not a playback command that needs to stay in
+  // sync across the room. Everything else (play/pause/seek/mute/PiP) actually
+  // changes shared state, so those stay controller-only.
   useEffect(() => {
     if (!hasCustomPlayer) return;
     const onKey = (e) => {
       // Don't intercept when typing in an input
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (!isController) return; // only controller uses shortcuts
+
+      if (e.key === 'f' || e.key === 'F') {
+        handleFullscreenToggle();
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (document.fullscreenElement) document.exitFullscreen();
+        return;
+      }
+
+      if (!isController) return; // only controller uses playback shortcuts
       switch (e.key) {
         case ' ':
         case 'k':
@@ -374,16 +388,9 @@ const [localFile,       setLocalFile]       = useState(null);
         case 'M':
           handleMuteToggle();
           break;
-        case 'f':
-        case 'F':
-          handleFullscreenToggle();
-          break;
         case 'p':
         case 'P':
           handlePiPToggle();
-          break;
-        case 'Escape':
-          if (document.fullscreenElement) document.exitFullscreen();
           break;
         default: break;
       }
@@ -832,6 +839,18 @@ const [localFile,       setLocalFile]       = useState(null);
                 <span className="player-viewer-dot" />
                 Controlled by <strong>{controllerName}</strong>
               </div>
+
+              {/* Fullscreen is a personal view setting, not a playback command —
+                  every participant gets it, not just the controller (who already
+                  has it via YouTube's own native control strip). */}
+              <button
+                className="player-fullscreen-btn"
+                onClick={handleFullscreenToggle}
+                aria-label="Fullscreen"
+                title="Fullscreen (F)"
+              >
+                <IconExpand />
+              </button>
 
               <div className="viewer-timeline">
                 <span className="viewer-time">{formatPlayerTime(viewerTime)}</span>

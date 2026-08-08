@@ -6,6 +6,7 @@ import socket from "../socket/socket";
 import { SOCKET } from "../constants/events";
 import { createLogger } from "../utils/logger";
 import { usePreferences } from "../hooks/usePreferences";
+import { useStableRoom } from "../hooks/useStableRoom";
 
 const log = createLogger("Room");
 
@@ -34,7 +35,10 @@ function Room() {
   const { invite_token } = useParams();
   const navigate = useNavigate();
 
-  const [room, setRoom]               = useState(null);
+  // A transient "no content" update (fresh joiner racing a corrective
+  // broadcast, or a reload racing the reconnect flow) gets held for 2s rather
+  // than immediately flashing the empty state — see useStableRoom.
+  const [room, setRoom]               = useStableRoom();
   const [loading, setLoading]         = useState(true);
   const [connected, setConnected]     = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
@@ -80,7 +84,7 @@ function Room() {
     } finally {
       setLoading(false);
     }
-  }, [invite_token]);
+  }, [invite_token, setRoom]);
 
   // Owned here (not in VideoStage) so "upload/replace streamed video" is
   // reachable from the header's content-source menu at any time, regardless
@@ -135,7 +139,7 @@ function Room() {
       socket.off(SOCKET.PARTICIPANT_KICKED, onParticipantKicked);
       socket.disconnect();
     };
-  }, [fetchRoom, invite_token, navigate]);
+  }, [fetchRoom, invite_token, navigate, setRoom]);
 
   // Escape always leaves theater mode, so a collapsed header is never a trap.
   useEffect(() => {
@@ -167,7 +171,6 @@ function Room() {
 
   return (
     <div className={pageClass}>
-      {theater && <div className="theater-reveal" aria-hidden="true" />}
 
       <RoomHeader
         room={room}
