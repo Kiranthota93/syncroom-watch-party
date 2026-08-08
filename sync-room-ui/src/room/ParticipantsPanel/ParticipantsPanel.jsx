@@ -1,7 +1,11 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 import nodeAPI from "../../services/api";
+import socket from "../../socket/socket";
+import { SOCKET } from "../../constants/events";
 import { createLogger } from "../../utils/logger";
+import { IconMic, IconMicOff, IconCamera, IconCameraOff } from "../../components/icons";
+import { MAX_PARTICIPANTS } from "../../constants/room";
 import "./ParticipantsPanel.css";
 
 const log = createLogger("ParticipantsPanel");
@@ -18,91 +22,21 @@ const IconPlay = () => (
   </svg>
 );
 
-// ── Activity type metadata ────────────────────────────────────────────────────
-const ACTIVITY_META = {
-  room_created:             { icon: '🏠', cat: 'room',         accent: '#8b5cf6' },
-  room_ended:               { icon: '🔴', cat: 'room',         accent: '#ef4444' },
-  participant_joined:       { icon: '🟢', cat: 'participants',  accent: '#22c55e' },
-  participant_rejoined:     { icon: '🟢', cat: 'participants',  accent: '#22c55e' },
-  participant_left:         { icon: '🔴', cat: 'participants',  accent: '#ef4444' },
-  participant_kicked:       { icon: '🚫', cat: 'participants',  accent: '#ef4444' },
-  playback_play:            { icon: '▶',  cat: 'playback',     accent: '#a78bfa' },
-  playback_pause:           { icon: '⏸',  cat: 'playback',     accent: '#a78bfa' },
-  playback_seek:            { icon: '⏩',  cat: 'playback',     accent: '#a78bfa' },
-  playback_rate_change:     { icon: '🔄',  cat: 'playback',     accent: '#a78bfa' },
-  controller_transferred:   { icon: '🎮',  cat: 'room',         accent: '#a78bfa' },
-  controller_auto_recovered:{ icon: '🎮',  cat: 'room',         accent: '#6b7280' },
-  host_transferred:         { icon: '👑',  cat: 'room',         accent: '#facc15' },
-  content_selected:         { icon: '🎬',  cat: 'room',         accent: '#60a5fa' },
-};
+const IconSearch = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
 
-const FILTER_TABS = [
-  { id: 'all',          label: 'All'          },
-  { id: 'participants', label: 'People'        },
-  { id: 'playback',     label: 'Playback'      },
-  { id: 'room',         label: 'Room'          },
-];
-
-ActivityTimeline.propTypes = {
-  logs:       PropTypes.array,
-  formatTime: PropTypes.func.isRequired,
-};
-
-function ActivityTimeline({ logs, formatTime }) {
-  const [filter, setFilter] = useState('all');
-  const filtered = (logs || [])
-    .slice()
-    .reverse()
-    .filter((a) => {
-      if (filter === 'all') return true;
-      return ACTIVITY_META[a.type]?.cat === filter;
-    })
-    .slice(0, 30);
-
-  return (
-    <div className="panel-section">
-      <div className="activity-header">
-        <h3>Activity</h3>
-      </div>
-
-      {/* Filter tabs */}
-      <div className="activity-filters">
-        {FILTER_TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            className={`activity-filter-btn ${filter === id ? 'activity-filter-active' : ''}`}
-            onClick={() => setFilter(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="activity-timeline">
-        {filtered.length === 0 && (
-          <div className="activity-empty">No events yet</div>
-        )}
-        {filtered.map((activity, i) => {
-          const meta = ACTIVITY_META[activity.type] || { icon: '•', accent: '#4b5563' };
-          return (
-            <div key={activity.created_at + i} className="timeline-item">
-              <div
-                className="timeline-icon"
-                style={{ color: meta.accent }}
-              >
-                {meta.icon}
-              </div>
-              <div className="timeline-body">
-                <span className="timeline-msg">{activity.message}</span>
-                <span className="timeline-time">{formatTime(activity.created_at)}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+const IconUserPlus = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="8.5" cy="7" r="4" />
+    <line x1="20" y1="8" x2="20" y2="14" />
+    <line x1="23" y1="11" x2="17" y2="11" />
+  </svg>
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -116,8 +50,41 @@ function ParticipantsPanel({ room, refreshRoom }) {
 
   const [openMenuId,   setOpenMenuId]   = useState(null);
   const [confirmState, setConfirmState] = useState(null); // { type, participant_id }
+  const [search,        setSearch]      = useState("");
+  const [inviteCopied,  setInviteCopied] = useState(false);
+  const [pinnedIds,     setPinnedIds]    = useState(() => new Set()); // local-only, this device's view
 
   const closeMenu = () => { setOpenMenuId(null); setConfirmState(null); };
+
+  // Local-only — pins a participant to the top of this device's list.
+  const togglePin = (participant_id) => {
+    setPinnedIds((prev) => {
+      const next = new Set(prev);
+      next.has(participant_id) ? next.delete(participant_id) : next.add(participant_id);
+      return next;
+    });
+    closeMenu();
+  };
+
+  // Ephemeral attention-getter — no persistence, just relayed to the target.
+  const pingParticipant = (target_participant_id) => {
+    socket.emit(SOCKET.PARTICIPANT_PING, {
+      invite_token: room.invite_token,
+      target_participant_id,
+    });
+    closeMenu();
+  };
+
+  const copyInvite = async () => {
+    try {
+      const invite_link = `${window.location.origin}/join-room?invite_token=${room.invite_token}`;
+      await navigator.clipboard.writeText(invite_link);
+      setInviteCopied(true);
+      setTimeout(() => setInviteCopied(false), 2000);
+    } catch (error) {
+      log.error("copyInvite failed", error);
+    }
+  };
 
   const transferHost = async (target_participant_id) => {
     try {
@@ -178,36 +145,21 @@ function ParticipantsPanel({ room, refreshRoom }) {
     }
   };
 
-  const onlineParticipants =
-    room.participants.filter(
-      (participant) => participant.is_online
-    );
-
   const sortedParticipants = [
     ...room.participants,
   ].sort((a, b) => {
+    const pinDiff = Number(pinnedIds.has(b.participant_id)) - Number(pinnedIds.has(a.participant_id));
+    if (pinDiff !== 0) return pinDiff;
     return (
       Number(b.is_online) -
       Number(a.is_online)
     );
   });
 
-  const controller =
-    room.participants.find(
-      (participant) =>
-        participant.participant_id ===
-        room.controller_participant_id
-    );
-
-  const getContentLabel = () => {
-    const type = room.content_source?.type;
-
-    if (!type) return "Not Selected";
-    if (type === "youtube") return "YouTube";
-    if (type === "local_video") return "Local Video";
-
-    return type;
-  };
+  const query = search.trim().toLowerCase();
+  const filteredParticipants = query
+    ? sortedParticipants.filter((p) => p.display_name?.toLowerCase().includes(query))
+    : sortedParticipants;
 
   const formatTime = (date) => {
     if (!date) {
@@ -246,15 +198,28 @@ function ParticipantsPanel({ room, refreshRoom }) {
     <aside className="participants-panel">
       <div className="panel-section">
         <div className="panel-header">
-          <h3>Participants</h3>
-
-          <span className="participant-count">
-            {room.participants.length}
+          <span className="participant-count-label">
+            {room.participants.length} / {MAX_PARTICIPANTS} in room
           </span>
+
+          <button className="pp-invite-btn" onClick={copyInvite}>
+            <IconUserPlus /> {inviteCopied ? "Copied!" : "Invite"}
+          </button>
+        </div>
+
+        <div className="pp-search-wrap">
+          <IconSearch />
+          <input
+            type="text"
+            className="pp-search-input"
+            placeholder="Search people…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         <div className="participant-list">
-          {sortedParticipants.map(
+          {filteredParticipants.map(
             (participant) => {
               const isHost =
                 participant.participant_id ===
@@ -289,6 +254,7 @@ function ParticipantsPanel({ room, refreshRoom }) {
                         {participant.display_name}
                       </span>
                       {isMe && <span className="you-tag">you</span>}
+                      {pinnedIds.has(participant.participant_id) && <span className="pin-indicator" title="Pinned">📌</span>}
                       {handRaised && <span className="hand-raised-indicator" title="Hand raised">🙋</span>}
                       {isMuted    && <span className="muted-indicator"       title="Muted from chat">🔇</span>}
                     </div>
@@ -315,7 +281,16 @@ function ParticipantsPanel({ room, refreshRoom }) {
                     </small>
                   </div>
 
-                  {amIHost && !isMe && (
+                  <div className="participant-call-icons">
+                    <span className={`pp-call-icon ${participant.mic_on ? "pp-call-icon-on" : ""}`}>
+                      {participant.mic_on ? <IconMic size={13} /> : <IconMicOff size={13} />}
+                    </span>
+                    <span className={`pp-call-icon ${participant.cam_on ? "pp-call-icon-on" : ""}`}>
+                      {participant.cam_on ? <IconCamera size={13} /> : <IconCameraOff size={13} />}
+                    </span>
+                  </div>
+
+                  {!isMe && (
                     <div className="participant-menu-wrap">
                       <button
                         className="participant-menu-btn"
@@ -349,27 +324,41 @@ function ParticipantsPanel({ room, refreshRoom }) {
                             </div>
                           ) : (
                             <>
-                              {!isController && participant.is_online && (
-                                <button onClick={() => { closeMenu(); transferController(participant.participant_id); }}>
-                                  🎮 Give Control
+                              {participant.is_online && (
+                                <button onClick={() => pingParticipant(participant.participant_id)}>
+                                  🔔 Ping
                                 </button>
                               )}
-                              {isController && participant.is_online && (
-                                <button onClick={() => { closeMenu(); transferController(currentUser.participant_id); }}>
-                                  🎮 Take Control Back
-                                </button>
-                              )}
-                              {!isHost && (
-                                <button onClick={() => setConfirmState({ type: 'host', participant_id: participant.participant_id })}>
-                                  👑 Make Host
-                                </button>
-                              )}
-                              <button onClick={() => toggleMute(participant.participant_id, participant.is_muted)}>
-                                {participant.is_muted ? '🔊 Unmute Chat' : '🔇 Mute Chat'}
+                              <button onClick={() => togglePin(participant.participant_id)}>
+                                📌 {pinnedIds.has(participant.participant_id) ? 'Unpin' : 'Pin'}
                               </button>
-                              <button className="menu-kick" onClick={() => setConfirmState({ type: 'kick', participant_id: participant.participant_id })}>
-                                🚫 Remove from Room
-                              </button>
+
+                              {amIHost && (
+                                <>
+                                  <div className="participant-menu-divider" />
+                                  {!isController && participant.is_online && (
+                                    <button onClick={() => { closeMenu(); transferController(participant.participant_id); }}>
+                                      🎮 Give Control
+                                    </button>
+                                  )}
+                                  {isController && participant.is_online && (
+                                    <button onClick={() => { closeMenu(); transferController(currentUser.participant_id); }}>
+                                      🎮 Take Control Back
+                                    </button>
+                                  )}
+                                  {!isHost && (
+                                    <button onClick={() => setConfirmState({ type: 'host', participant_id: participant.participant_id })}>
+                                      👑 Make Host
+                                    </button>
+                                  )}
+                                  <button onClick={() => toggleMute(participant.participant_id, participant.is_muted)}>
+                                    {participant.is_muted ? '🔊 Unmute Chat' : '🔇 Mute Chat'}
+                                  </button>
+                                  <button className="menu-kick" onClick={() => setConfirmState({ type: 'kick', participant_id: participant.participant_id })}>
+                                    🚫 Remove from Room
+                                  </button>
+                                </>
+                              )}
                             </>
                           )}
                         </div>
@@ -382,27 +371,6 @@ function ParticipantsPanel({ room, refreshRoom }) {
           )}
         </div>
       </div>
-
-      <div className="panel-section">
-        <h3>Room Status</h3>
-
-        <div className="status-chips">
-          <div className="status-row">
-            <span>Content</span>
-            <span>{getContentLabel()}</span>
-          </div>
-          <div className="status-row">
-            <span>Online</span>
-            <span>{onlineParticipants.length} / {room.participants.length}</span>
-          </div>
-          <div className="status-row">
-            <span>Controller</span>
-            <span>{controller?.display_name || "—"}</span>
-          </div>
-        </div>
-      </div>
-
-      <ActivityTimeline logs={room.activity_logs} formatTime={formatTime} />
     </aside>
   );
 }
@@ -442,19 +410,11 @@ ParticipantsPanel.propTypes = {
 
           is_online:
             PropTypes.bool,
+
+          mic_on: PropTypes.bool,
+          cam_on: PropTypes.bool,
         })
       ).isRequired,
-
-    activity_logs:
-      PropTypes.arrayOf(
-        PropTypes.shape({
-          message:
-            PropTypes.string,
-
-          created_at:
-            PropTypes.string,
-        })
-      ),
   }).isRequired,
 };
 

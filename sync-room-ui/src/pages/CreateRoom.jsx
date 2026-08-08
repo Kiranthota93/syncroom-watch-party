@@ -13,6 +13,7 @@ function CreateRoom() {
   const navigate = useNavigate();
 
   const [display_name, setDisplayName] = useState(() => getPrefs().displayName);
+  const [room_name, setRoomName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
 
@@ -26,7 +27,11 @@ function CreateRoom() {
     try {
       setLoading(true);
       const client_id = getClientId();
-      const { data } = await nodeAPI.post("/rooms/create", { display_name, client_id });
+      const { data } = await nodeAPI.post("/rooms/create", {
+        display_name,
+        client_id,
+        room_name: room_name.trim() || undefined,
+      });
 
       const room = data.room;
       localStorage.setItem("syncroom_user", JSON.stringify({
@@ -76,6 +81,16 @@ function CreateRoom() {
           {error && <p className="error-text">{error}</p>}
 
           <small>Visible to everyone in the room.</small>
+
+          <label className="room-name-label">ROOM NAME (OPTIONAL)</label>
+          <input
+            type="text"
+            value={room_name}
+            placeholder="Movie Night"
+            onChange={(e) => setRoomName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") createRoom(); }}
+          />
+          <small>You can rename it later from Room Settings.</small>
 
           <div className="card-footer">
             <Link to="/" className="secondary-btn">← Back to Home</Link>

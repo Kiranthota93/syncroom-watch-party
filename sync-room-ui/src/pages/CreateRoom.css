@@ -190,6 +190,10 @@
   font-size: 14px;
 }
 
+.room-name-label {
+  margin-top: 24px !important;
+}
+
 /* =========================
    FOOTER
 ========================= */

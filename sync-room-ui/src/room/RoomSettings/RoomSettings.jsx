@@ -38,6 +38,11 @@ const SETTING_ITEMS = [
     label: 'Allow YouTube',
     desc:  'Participants can stream YouTube videos.',
   },
+  {
+    key:   'allow_streamed_video',
+    label: 'Allow Uploaded Video Streaming',
+    desc:  'Host uploads a video once and everyone streams it from the server.',
+  },
 ];
 
 export default function RoomSettings({ room, onClose }) {
@@ -48,10 +53,14 @@ export default function RoomSettings({ room, onClose }) {
     allow_controller_requests: true,
     allow_local_video:         true,
     allow_youtube:             true,
+    allow_streamed_video:      true,
     ...(room.settings || {}),
   });
   const [saving, setSaving]   = useState(false);
   const [saved,  setSaved]    = useState(false);
+  const [roomName, setRoomName] = useState(room.room_name || "");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameSaved, setNameSaved] = useState(false);
 
   // Sync if room updates externally
   useEffect(() => {
@@ -59,6 +68,31 @@ export default function RoomSettings({ room, onClose }) {
       setSettings((prev) => ({ ...prev, ...room.settings }));
     }
   }, [room.settings]);
+
+  useEffect(() => {
+    setRoomName(room.room_name || "");
+  }, [room.room_name]);
+
+  const saveName = async () => {
+    const trimmed = roomName.trim();
+    if (!trimmed || trimmed === room.room_name) return;
+    setNameSaving(true);
+    setNameSaved(false);
+    try {
+      const user = JSON.parse(localStorage.getItem('syncroom_user') || '{}');
+      await nodeAPI.patch('/rooms/settings', {
+        invite_token:   room.invite_token,
+        participant_id: user.participant_id,
+        room_name:      trimmed,
+      });
+      setNameSaved(true);
+      setTimeout(() => setNameSaved(false), 2000);
+    } catch (err) {
+      log.error('Failed to rename room', err);
+    } finally {
+      setNameSaving(false);
+    }
+  };
 
   const toggle = async (key) => {
     const updated = { ...settings, [key]: !settings[key] };
@@ -103,6 +137,25 @@ export default function RoomSettings({ room, onClose }) {
         <p className="rs-subtitle">
           Changes apply immediately to all participants.
         </p>
+
+        <div className="rs-rename-row">
+          <input
+            type="text"
+            className="rs-rename-input"
+            value={roomName}
+            maxLength={60}
+            placeholder="Room name"
+            onChange={(e) => setRoomName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') saveName(); }}
+          />
+          <button
+            className="rs-rename-save"
+            onClick={saveName}
+            disabled={nameSaving || !roomName.trim() || roomName.trim() === room.room_name}
+          >
+            {nameSaving ? 'Saving…' : nameSaved ? '✓ Saved' : 'Rename'}
+          </button>
+        </div>
 
         <div className="rs-list">
           {SETTING_ITEMS.map(({ key, label, desc }) => (

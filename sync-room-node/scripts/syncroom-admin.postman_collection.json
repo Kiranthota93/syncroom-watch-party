@@ -1,0 +1,80 @@
+{
+  "info": {
+    "name": "SyncRoom Admin",
+    "_postman_id": "8f2e2b6e-6e2a-4c6a-9a5e-syncroom-admin",
+    "description": "Admin API for room/storage status and cleanup. Every request needs the x-admin-key header, set via the {{admin_key}} collection variable — fill that in your own Postman environment, never in this file.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      { "key": "key", "value": "x-admin-key" },
+      { "key": "value", "value": "{{admin_key}}" },
+      { "key": "in", "value": "header" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "admin_key", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Verify passkey",
+      "request": { "method": "GET", "url": "{{base_url}}/api/admin/verify" }
+    },
+    {
+      "name": "Stats (rooms, playback, storage)",
+      "request": { "method": "GET", "url": "{{base_url}}/api/admin/stats" }
+    },
+    {
+      "name": "List rooms",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/admin/rooms?status=all&limit=200",
+          "host": ["{{base_url}}"],
+          "path": ["api", "admin", "rooms"],
+          "query": [
+            { "key": "status", "value": "all", "description": "all | active | expired | ended" },
+            { "key": "q", "value": "", "description": "search room code/name/host", "disabled": true },
+            { "key": "limit", "value": "200" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Run cleanup sweep now",
+      "request": { "method": "POST", "url": "{{base_url}}/api/admin/cleanup" }
+    },
+    {
+      "name": "Clear a room's content",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/admin/rooms/:invite_token/content",
+        "variable": [{ "key": "invite_token", "value": "" }]
+      }
+    },
+    {
+      "name": "Delete a room",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/admin/rooms/:invite_token",
+        "variable": [{ "key": "invite_token", "value": "" }]
+      }
+    },
+    {
+      "name": "Bulk delete by status",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/api/admin/rooms/bulk-delete",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"category\": \"expired\",\n  \"expected_count\": 0\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "description": "category: expired | ended | active_empty. expected_count must match the current count from Stats/List — the server rejects (409) if it's changed, as a guard against deleting more than you meant to."
+      }
+    }
+  ]
+}

@@ -1,35 +1,145 @@
+/* Opacity only — the page is exactly viewport-height now, so a translate here
+   would push it past the fold and introduce a scrollbar. */
 @keyframes room-fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .room-page {
-  min-height: 100vh;
+  /* Viewport-locked column: the stage claims every pixel the chrome doesn't,
+     so the media area is sized by available height rather than by width. */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: radial-gradient(circle at top, #1c2958 0%, #081631 40%, #04112a 100%);
   color: white;
   animation: room-fade-in 0.25s ease;
 }
 
 .room-layout {
+  flex: 1;
+  min-height: 0;
   display: flex;
   gap: 14px;
-  padding: 14px 16px 20px;
-  align-items: flex-start;
+  padding: 10px 16px 12px;
+  align-items: stretch;
 }
 
 .room-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 /* Relative wrapper so the reaction overlay is anchored to the video area */
 .room-stage-wrap {
   position: relative;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* ── Theater mode ──
+   The header lifts out of the flow and becomes a hover-revealed overlay, so the
+   stage gets the entire column. Escape exits, and the header returns on hover,
+   so the toggle is never unreachable. */
+.room-page-theater .room-layout { padding: 0; }
+.room-page-theater .room-main { gap: 0; }
+
+/* Hover strip along the top edge that reveals the hidden header. Sits in the
+   DOM immediately before it so a plain sibling selector does the work. */
+.theater-reveal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  z-index: 41;
+}
+
+.room-page-theater .room-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.theater-reveal:hover + .room-header,
+.room-page-theater .room-header:hover,
+.room-page-theater .room-header:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+/* ── Shared bottom dock ──
+   One zone for the secondary collaboration controls (reactions, voice,
+   participants). Grouping them means they can no longer overlap each other.
+
+   It sits *below* the stage rather than over it: an overlay here would land on
+   the player's own control bar (play/pause, scrubber, fullscreen), which occupy
+   the same bottom strip in every source. Theater mode floats it instead, since
+   that mode's whole purpose is maximum video. */
+.room-dock {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 2px;
+
+  opacity: 0.75;
+  transition: opacity 0.2s ease;
+}
+
+.room-dock:hover,
+.room-dock:focus-within {
+  opacity: 1;
+}
+.room-page:not(.room-page-playing) .room-dock {
+  opacity: 1;
+}
+
+/* Theater mode — the dock lifts out of the flow and auto-hides with the header,
+   so the frame gets the entire column. */
+.room-page-theater .room-dock {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+}
+.room-page-theater .room-dock:hover,
+.room-page-theater .room-dock:focus-within,
+.room-page-theater:hover .room-dock {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Narrow screens: the dock stays one row by dropping the button labels down to
+   icons — wrapping would stack three pills over the video. */
+@media (max-width: 640px) {
+  .room-dock {
+    gap: 6px;
+    flex-wrap: nowrap;
+    bottom: 12px;
+  }
+  .room-dock .vcb-join-label,
+  .room-dock .fps-more-label { display: none; }
+  .room-dock .vcb-join-btn { padding: 10px 14px; }
 }
 
 /* ── Loading / Error states ── */
@@ -83,13 +193,26 @@
 }
 .room-error-back:hover { background: rgba(255,255,255,.08); }
 
-/* ── Mobile layout ── */
+/* ── Mobile layout ──
+   The page stops being viewport-locked below the tablet breakpoint: on a phone
+   the stage plus its controls legitimately exceed one screen, so scrolling is
+   the correct behaviour rather than crushing the video. */
 @media (max-width: 767px) {
+  .room-page {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
   .room-layout {
+    flex: none;
     flex-direction: column;
     padding: 8px 10px 16px;
     gap: 10px;
+    align-items: stretch;
   }
+
+  .room-stage-wrap { flex: none; }
 }
 
 @media (max-width: 480px) {

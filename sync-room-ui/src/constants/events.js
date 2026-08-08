@@ -24,6 +24,38 @@ export const SOCKET = {
   PARTICIPANT_KICKED:        'participant:kicked',
   REACTION_SEND:             'reaction:send',
   REACTION_EMIT:             'reaction:emit',
+
+  // Ping — ephemeral attention-getter, no persistence
+  PARTICIPANT_PING:        'participant:ping',
+  PARTICIPANT_PING_NOTIFY: 'participant:ping:notify',
+
+  // Voice call
+  VOICE_JOIN:         'voice:join',
+  VOICE_LEAVE:        'voice:leave',
+  VOICE_TOGGLE_MIC:   'voice:toggle-mic',
+  VOICE_MIC_REJECTED: 'voice:mic-rejected',   // server -> sender only, toggle was refused
+  VOICE_SPEAKING:     'voice:speaking',       // ephemeral relay, no persistence
+
+  // Video call
+  VIDEO_JOIN:         'video:join',
+  VIDEO_LEAVE:        'video:leave',
+  VIDEO_TOGGLE_CAM:   'video:toggle-cam',
+  VIDEO_CAM_REJECTED: 'video:cam-rejected',  // server -> sender only, toggle was refused
+
+  // WebRTC signaling relay (mesh) — server never inspects these payloads
+  RTC_PEERS:          'rtc:peers',
+  RTC_PEER_JOINED:    'rtc:peer-joined',
+  RTC_PEER_LEFT:      'rtc:peer-left',
+  RTC_OFFER:          'rtc:offer',
+  RTC_ANSWER:         'rtc:answer',
+  RTC_ICE_CANDIDATE:  'rtc:ice-candidate',
+
+  // Watch/Social mode
+  PLAYBACK_PAUSE_REQUEST:        'playback:pause-request',
+  PLAYBACK_PAUSE_REQUEST_NOTIFY: 'playback:pause-request:notify',
+
+  // Streamed local video upload — ephemeral per-chunk progress, no persistence
+  CONTENT_UPLOAD_PROGRESS: 'content:upload-progress',
 };
 
 /** MediaProvider internal event names — used by providers and PlaybackEngine */

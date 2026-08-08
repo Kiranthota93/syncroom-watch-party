@@ -20,7 +20,7 @@
 .pref-modal {
   background: rgba(10, 14, 35, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
+  border-radius: var(--radius-lg, 24px);
   width: 100%;
   max-width: 440px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
@@ -236,7 +236,7 @@
 
 .pref-cancel-btn {
   padding: 8px 16px;
-  border-radius: 10px;
+  border-radius: var(--radius-full, 999px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: transparent;
   color: #9ca3af;
@@ -248,7 +248,7 @@
 
 .pref-save-btn {
   padding: 8px 18px;
-  border-radius: 10px;
+  border-radius: var(--radius-full, 999px);
   border: none;
   background: #7c3aed;
   color: white;

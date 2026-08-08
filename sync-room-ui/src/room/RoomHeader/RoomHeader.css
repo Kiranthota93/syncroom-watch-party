@@ -1,5 +1,13 @@
 .room-header {
-  height: 58px;
+  /* min-height, not height: adding the source chip this session pushed the
+     left side past its available width at ~700-1024px without the room name
+     truncating (see .room-name below), so the title wrapped to two lines. A
+     fixed height then centered that taller content, pushing it both above the
+     header (negative offset) and down into the video stage's paint area below
+     — "the dropdown is hidden behind the main content" was actually this. A
+     min-height can't produce that failure even if truncation is ever
+     insufficient for some future addition. */
+  min-height: 58px;
 
   display: flex;
   justify-content: space-between;
@@ -11,12 +19,27 @@
 
   border-bottom: 1px solid rgba(255,255,255,.05);
   backdrop-filter: blur(8px);
+
+  /* Required, not cosmetic. `backdrop-filter` above creates a stacking
+     context, which traps every descendant's z-index inside this element —
+     a dropdown with z-index:9999 still cannot paint above .room-layout,
+     because the *header itself* is what gets ordered against it, and a
+     static/auto-z-index box paints in DOM order (i.e. underneath).
+     Positioning the header with an explicit z-index lifts the whole subtree,
+     menus included, above the content below. */
+  position: relative;
+  z-index: 50;
 }
 
 .room-header-left {
   display: flex;
   align-items: center;
   gap: 12px;
+  /* Allow this side to shrink below its content's natural width — the flex
+     default (min-width: auto) blocks shrinking below intrinsic content size,
+     which is what forces a wrap instead of letting .room-name ellipsis. */
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .room-logo {
@@ -63,6 +86,15 @@
   font-size: 15px;
   font-weight: 600;
   color: #e5e7eb;
+
+  /* Truncate, don't wrap, at every width — not just the <767px media query
+     below. min-width: 0 is required for a flex item to shrink below its
+     content's intrinsic width; without it this silently wraps instead. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .room-code {
@@ -70,9 +102,9 @@
   align-items: center;
   gap: 10px;
 
-  padding: 10px 14px;
+  padding: 6px 12px;
 
-  border-radius: 12px;
+  border-radius: var(--radius-full, 999px);
 
   background: rgba(255,255,255,.05);
 
@@ -108,18 +140,87 @@
   background: rgba(255,255,255,.06);
 }
 
+/* ── Source chip ──
+   Always visible next to the room name — the current source and the only
+   entry point to change it, so it can't disappear behind an icon-only
+   overflow menu again. */
+.source-chip-anchor { position: relative; }
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  height: 32px;
+  padding: 0 12px;
+
+  border-radius: var(--radius-full, 999px);
+  border: 1px solid rgba(139,92,246,.3);
+  background: rgba(139,92,246,.1);
+
+  color: #c4b5fd;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  transition: background .15s, border-color .15s;
+}
+
+.source-chip:hover { background: rgba(139,92,246,.18); }
+
+.source-chip:focus-visible {
+  outline: 2px solid var(--accent, #8b5cf6);
+  outline-offset: 2px;
+}
+
+.source-chip-open {
+  background: rgba(139,92,246,.22);
+  border-color: rgba(139,92,246,.55);
+}
+
+.source-chip-readonly {
+  cursor: default;
+  opacity: .85;
+}
+
+/* Anchored left (the chip sits on the header's left side), unlike the "•••"
+   menu which anchors right — otherwise it would run off-screen. Compound
+   selector so this reliably wins over .header-menu's left/right regardless of
+   which rule appears later in the stylesheet (equal specificity would
+   otherwise make that a source-order footgun). */
+.header-menu.source-menu {
+  left: 0;
+  right: auto;
+  min-width: 190px;
+}
+
 .room-header-right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
+}
+
+.header-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.room-header-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255,255,255,.08);
+  flex-shrink: 0;
 }
 
 .connection-status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 
-  padding: 10px 14px;
+  height: 32px;
+  padding: 0 11px;
 
   border-radius: 999px;
 
@@ -129,8 +230,10 @@
 
   color: #22c55e;
 
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .status-dot {
@@ -153,11 +256,11 @@
 }
 
 .header-btn {
-  height: 42px;
+  height: 34px;
 
-  padding: 0 16px;
+  padding: 0 12px;
 
-  border-radius: 12px;
+  border-radius: var(--radius-full, 999px);
 
   border: 1px solid rgba(255,255,255,.08);
 
@@ -169,9 +272,11 @@
 
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 
-  font-size: 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
 
   transition: background 0.2s;
 }
@@ -180,12 +285,153 @@
   background: rgba(255,255,255,.08);
 }
 
-.leave-btn {
-  border: none;
+/* ── Icon buttons ──
+   Secondary actions are icon-only with tooltips so they read as a supporting
+   cluster rather than ten equally-weighted labelled pills. */
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  border: 1px solid transparent;
   background: transparent;
 
-  color: #ef4444;
+  color: #d1d5db;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,.1);
+  color: #fff;
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent, #8b5cf6);
+  outline-offset: 2px;
+}
+
+.icon-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.icon-btn-active {
+  background: rgba(139,92,246,.18);
+  border-color: rgba(139,92,246,.45);
+  color: #a78bfa;
+}
+
+/* ── Overflow menu ── */
+.header-menu-anchor { position: relative; }
+
+.header-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+
+  min-width: 210px;
+  padding: 6px;
+
+  /* Opaque rather than glass: this panel opens over video content, where a
+     translucent background makes the labels hard to read. */
+  background: #0c122c;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+
+  animation: header-menu-in .14s ease;
+}
+
+@keyframes header-menu-in {
+  from { opacity: 0; transform: translateY(-6px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.header-menu-label {
+  padding: 7px 10px 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.header-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  width: 100%;
+  padding: 9px 10px;
+
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+
+  color: #d1d5db;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+
+  transition: background .13s, color .13s;
+}
+
+.header-menu-item:hover:not(:disabled) {
+  background: rgba(255,255,255,.07);
+  color: #fff;
+}
+
+.header-menu-item:focus-visible {
+  outline: 2px solid var(--accent, #8b5cf6);
+  outline-offset: -2px;
+}
+
+.header-menu-item:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Same disabled look for the streamed-upload item, which is a <label> (so
+   clicking opens the file picker) rather than a <button>. */
+.header-menu-item-disabled {
+  opacity: .6;
+  cursor: wait;
+  pointer-events: none;
+}
+
+.header-menu-check {
+  margin-left: auto;
+  color: #a78bfa;
+  font-size: 12px;
+}
+
+.header-menu-divider {
+  height: 1px;
+  margin: 5px 4px;
+  background: rgba(255,255,255,.08);
+}
+
+.leave-btn {
+  height: 34px;
+
+  padding: 0 14px;
+
+  border-radius: var(--radius-full, 999px);
+
+  border: none;
+
+  background: #ef4444;
+
+  color: white;
 
   font-weight: 600;
 
@@ -193,53 +439,28 @@
 
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 
-  font-size: 14px;
+  font-size: 12.5px;
+  white-space: nowrap;
 
-  padding: 0 4px;
-
-  transition: opacity 0.2s;
+  transition: background 0.2s, opacity 0.2s;
 }
 
 .leave-btn:hover {
-  opacity: 0.8;
-}
-
-.end-room-btn {
-  height: 42px;
-
-  padding: 0 16px;
-
-  border-radius: 12px;
-
-  border: 1px solid rgba(239, 68, 68, 0.3);
-
-  background: rgba(239, 68, 68, 0.1);
-
-  color: #ef4444;
-
-  font-weight: 600;
-
-  cursor: pointer;
-
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  font-size: 14px;
-
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.end-room-btn:hover {
-  background: rgba(239, 68, 68, 0.22);
-  border-color: rgba(239, 68, 68, 0.5);
+  background: #dc2626;
 }
 
 .settings-btn {
-  font-size: 16px;
-  padding: 0 13px;
+  font-size: 15px;
+  padding: 0 10px;
+  width: 34px;
+}
+
+.prefs-btn {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
 }
 
 /* ── Request Control button sent state ── */
@@ -259,10 +480,11 @@
   align-items: center;
   gap: 12px;
   padding: 14px 18px;
-  background: rgba(12,18,44,.96);
+  /* Opaque rather than glass — this banner appears over video content, where
+     a translucent background hurts legibility. */
+  background: #0c122c;
   border: 1px solid rgba(139,92,246,.35);
   border-radius: 16px;
-  backdrop-filter: blur(16px);
   box-shadow: 0 8px 32px rgba(0,0,0,.5);
   min-width: 340px;
   animation: ctrl-req-in .22s cubic-bezier(.22,1,.36,1);
@@ -316,18 +538,18 @@
 .ctrl-req-dismiss:hover { color: #9ca3af; }
 
 .hand-btn {
-  height: 42px;
-  padding: 0 14px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
   border: 1px solid rgba(255,255,255,.08);
   background: rgba(255,255,255,.04);
   color: #d1d5db;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   transition: background .2s, border-color .2s, color .2s;
 }
 .hand-btn:hover:not(:disabled) { background: rgba(255,255,255,.08); }
@@ -397,19 +619,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.end-room-warning-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  margin-bottom: 4px;
 }
 
 .host-leave-dialog h3 {
@@ -505,10 +714,12 @@
   .room-header-right::-webkit-scrollbar { display: none; }
 
   /* Collapse text-only labels on smallest screens */
-  .header-btn        { height: 34px; padding: 0 10px; font-size: 12px; gap: 4px; }
-  .hand-btn          { height: 34px; padding: 0 10px; font-size: 12px; }
-  .end-room-btn      { height: 34px; padding: 0 10px; font-size: 12px; }
-  .connection-status { font-size: 11px; padding: 6px 10px; }
+  .header-btn        { height: 32px; padding: 0 10px; font-size: 12px; gap: 4px; }
+  .hand-btn          { width: 32px; height: 32px; }
+  .leave-btn         { height: 32px; padding: 0 10px; font-size: 12px; }
+  .connection-status { font-size: 11px; height: 32px; padding: 0 10px; }
+  .header-group      { gap: 4px; }
+  .room-header-divider { display: none; }
 
   /* Hide non-essential buttons at narrow widths */
   .prefs-btn { display: none; }

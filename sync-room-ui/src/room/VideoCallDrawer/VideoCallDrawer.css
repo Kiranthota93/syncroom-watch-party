@@ -1,0 +1,183 @@
+.vcd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.vcd-panel {
+  width: min(420px, 100%);
+  height: 100%;
+  background: #0c1330;
+  border-left: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+}
+
+.vcd-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vcd-header h3 { font-size: 16px; }
+
+.vcd-count {
+  background: var(--glass-bg-strong);
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.vcd-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.vcd-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.vcd-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vcd-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.vcd-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 24px 0;
+}
+
+.vcd-tile {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+}
+
+.vcd-tile-large {
+  aspect-ratio: 16 / 10;
+}
+
+.vcd-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.vcd-tile-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(139, 92, 246, 0.25), transparent 70%);
+}
+
+.vcd-tile-footer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+  font-size: 12px;
+}
+
+.vcd-tile-mic {
+  display: flex;
+  align-items: center;
+  opacity: 0.8;
+}
+
+.vcd-tile-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vcd-tile-pin {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.vcd-footer {
+  display: flex;
+  gap: 8px;
+}
+
+.vcd-join-btn, .vcd-toggle-btn, .vcd-leave-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.vcd-join-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: white;
+}
+
+.vcd-join-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.vcd-toggle-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* Muted/off state — neutral tint, not red; red is reserved for Leave. */
+.vcd-toggle-off { background: rgba(255, 255, 255, 0.18); color: #fca5a5; }
+
+.vcd-leave-btn {
+  background: var(--danger);
+  color: white;
+}

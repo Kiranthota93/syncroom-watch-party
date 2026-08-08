@@ -2,15 +2,25 @@ const express = require("express");
 const cors = require("cors");
 const config = require("./config");
 const roomRoutes = require("./routes/roomRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
 
 app.disable("x-powered-by");
 
-app.use(cors({
-  origin: [config.clientUrl, "http://localhost:5173"],
-  credentials: true,
-}));
+// The app runs behind a reverse proxy (nginx in Docker, Vite's proxy in dev).
+// Without this every request reports the proxy's address as req.ip, so the
+// admin route's per-IP rate limit would treat all callers as one client — a
+// single attacker could lock out every admin. Trust exactly one hop; trusting
+// more would let a client forge X-Forwarded-For and evade the limit entirely.
+app.set("trust proxy", 1);
+
+app.use(
+  cors({
+    origin: [config.clientUrl, "http://localhost:5173"],
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -34,6 +44,7 @@ app.get("/health", (req, res) => {
 /* API */
 
 app.use("/api/rooms", roomRoutes);
+app.use("/api/admin", adminRoutes);
 
 /* 404 */
 

@@ -125,6 +125,13 @@ export function useNotifications({ room, chatTabActive = false, notificationsEna
     };
   }, [push]);
 
+  // ── Ping ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const onPing = ({ display_name }) => push(`${display_name} pinged you`, TYPES.warning, '👋');
+    socket.on(SOCKET.PARTICIPANT_PING_NOTIFY, onPing);
+    return () => socket.off(SOCKET.PARTICIPANT_PING_NOTIFY, onPing);
+  }, [push]);
+
   // ── Chat messages (when Room tab is active) ─────────────────────
   useEffect(() => {
     const onMsg = ({ display_name, message, type }) => {

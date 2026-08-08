@@ -3,9 +3,9 @@
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  background: rgba(17,25,55,0.85);
+  background: #111937;
   border: 1px solid rgba(255,255,255,.05);
-  border-radius: 14px;
+  border-radius: var(--radius-full, 999px);
 }
 
 .source-bar-label {
@@ -29,7 +29,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-full, 999px);
   border: 1px solid rgba(255,255,255,.08);
   background: rgba(255,255,255,.03);
   color: #9ca3af;

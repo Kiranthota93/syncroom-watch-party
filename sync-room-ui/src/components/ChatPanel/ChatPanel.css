@@ -198,7 +198,7 @@
   width: 34px; height: 34px;
   border: 1px solid rgba(255,255,255,.08);
   background: rgba(255,255,255,.04);
-  border-radius: 10px;
+  border-radius: var(--radius-full, 999px);
   cursor: pointer;
   font-size: 17px;
   display: flex;
@@ -251,7 +251,7 @@
 
 .chat-send-btn {
   width: 34px; height: 34px;
-  border-radius: 10px;
+  border-radius: var(--radius-full, 999px);
   border: none;
   background: #8b5cf6;
   color: white;

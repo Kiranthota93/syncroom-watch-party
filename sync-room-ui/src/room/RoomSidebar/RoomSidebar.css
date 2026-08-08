@@ -1,22 +1,70 @@
+.rsb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-end;
+  animation: rsb-fade-in 0.15s ease;
+}
+
+@keyframes rsb-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .room-sidebar {
-  width: 300px;
+  width: min(420px, 100%);
+  height: 100%;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: rgba(17,25,55,0.85);
-  border: 1px solid rgba(255,255,255,.05);
-  border-radius: 16px;
+  background: #0c1330;
+  border-left: 1px solid rgba(255,255,255,.08);
   overflow: hidden;
-  height: calc(100vh - 58px - 28px); /* viewport minus header minus layout padding */
-  position: sticky;
-  top: calc(58px + 14px);
+  animation: rsb-slide-in 0.2s cubic-bezier(.22,1,.36,1);
 }
+
+@keyframes rsb-slide-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.rsb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 8px;
+  flex-shrink: 0;
+}
+
+.rsb-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.rsb-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: #6b7280;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.rsb-close:hover { background: rgba(255, 255, 255, 0.12); color: #9ca3af; }
 
 /* ── Tab bar ── */
 .sidebar-tabs {
   display: flex;
   border-bottom: 1px solid rgba(255,255,255,.05);
   flex-shrink: 0;
+  padding: 0 16px;
 }
 
 .sidebar-tab {
@@ -71,7 +119,7 @@
   scrollbar-color: rgba(255,255,255,.07) transparent;
 }
 
-/* Participants panel inside sidebar loses its own background/border */
+/* Participants panel inside the drawer loses its own background/border */
 .sidebar-content .participants-panel {
   width: 100%;
   height: 100%;
@@ -85,17 +133,15 @@
 }
 .sidebar-content .panel-section:last-child {
   border-bottom: none;
-  flex: 1;              /* grow to fill remaining sidebar height */
+  flex: 1;
 }
 
-/* Chat panel fills the sidebar */
+/* Chat panel fills the drawer */
 .sidebar-content .chat-panel { height: 100%; }
 
-/* ── Mobile: sidebar below main, fixed height ── */
+/* ── Mobile: full-width drawer ── */
 @media (max-width: 767px) {
   .room-sidebar {
     width: 100%;
-    height: 360px;
-    position: static;
   }
 }

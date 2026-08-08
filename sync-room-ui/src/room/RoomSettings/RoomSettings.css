@@ -18,7 +18,7 @@
 .rs-panel {
   background: #0e1632;
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 20px;
+  border-radius: var(--radius-lg, 24px);
   width: 440px;
   max-width: calc(100vw - 32px);
   max-height: 85vh;
@@ -101,6 +101,46 @@
 }
 
 /* ── Settings list ── */
+.rs-rename-row {
+  display: flex;
+  gap: 8px;
+  padding: 0 22px 16px;
+  flex-shrink: 0;
+}
+
+.rs-rename-input {
+  flex: 1;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: white;
+  padding: 0 12px;
+  font-size: 13px;
+  outline: none;
+}
+
+.rs-rename-input:focus {
+  border-color: var(--accent);
+}
+
+.rs-rename-save {
+  padding: 0 14px;
+  border-radius: var(--radius-full, 999px);
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rs-rename-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .rs-list {
   display: flex;
   flex-direction: column;

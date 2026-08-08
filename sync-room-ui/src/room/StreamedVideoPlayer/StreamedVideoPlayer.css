@@ -1,0 +1,125 @@
+.svp-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: black;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.svp-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: black;
+}
+
+.svp-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 14px 12px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+  transition: opacity 0.2s;
+}
+
+.svp-controls-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.svp-scrub {
+  width: 100%;
+  margin-bottom: 8px;
+  accent-color: var(--accent);
+}
+
+.svp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.svp-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.svp-btn svg { width: 18px; height: 18px; }
+.svp-btn-play svg { width: 22px; height: 22px; }
+
+.svp-time {
+  font-size: 12px;
+  color: white;
+  white-space: nowrap;
+}
+
+.svp-volume {
+  width: 60px;
+  accent-color: var(--accent);
+}
+
+.svp-speed {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.svp-viewer-banner {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  color: white;
+}
+
+.svp-viewer-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.svp-viewer-timeline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  font-size: 12px;
+  color: white;
+}
+
+.svp-viewer-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.svp-viewer-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+}

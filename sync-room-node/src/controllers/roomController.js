@@ -5,35 +5,32 @@ const crypto = require("crypto");
 const { getIO } = require("../socket/socketManager");
 const { SOCKET } = require("../constants/events");
 const { recordWatchSession } = require("../utils/watchSession");
+const config = require("../config");
 
 const createRoom = async (req, res) => {
   try {
-    const { display_name, client_id } = req.body;
+    const { display_name, client_id, room_name } = req.body;
 
     const invite_token = crypto.randomBytes(8).toString("hex");
 
-    const room_code =
-      generateRoomCode();
+    const room_code = generateRoomCode();
 
-    const participant_id =
-      crypto.randomUUID();
+    const participant_id = crypto.randomUUID();
 
     const expires_at = new Date(
       Date.now() +
         24 * 60 * 60 * 1000
     );
 
-    const room =
-      await Room.create({
+    const room = await Room.create({
         room_code,
         invite_token,
+        ...(room_name?.trim() ? { room_name: room_name.trim() } : {}),
         host_name: display_name,
 
-        host_participant_id:
-          participant_id,
+        host_participant_id: participant_id,
 
-        controller_participant_id:
-          participant_id,
+        controller_participant_id: participant_id,
 
         participants: [
           {
@@ -67,6 +64,7 @@ const createRoom = async (req, res) => {
     });
   }
 };
+
 const joinRoom = async (
   req,
   res
@@ -96,16 +94,13 @@ const joinRoom = async (
       status: "active",
     };
 
-    if (invite_token) {
-      query.invite_token =
-        invite_token;
-    } else {
-      query.room_code =
-        room_code;
+    if (invite_token) { 
+      query.invite_token = invite_token;
+    } else { 
+      query.room_code = room_code;
     }
 
-    const room =
-      await Room.findOne(query);
+    const room = await Room.findOne(query);
 
     if (!room) {
       return res.status(404).json({
@@ -115,13 +110,7 @@ const joinRoom = async (
       });
     }
 
-    const existingParticipant =
-      room.participants.find(
-        (participant) =>
-          participant.client_id ===
-          client_id
-      );
-
+    const existingParticipant = room.participants.find( (participant) => participant.client_id === client_id);
     if (
       existingParticipant
     ) {
@@ -154,29 +143,32 @@ const joinRoom = async (
       });
     }
 
-    const participant_id =
-      crypto.randomUUID();
+    const onlineCount = room.participants.filter((p) => p.is_online).length;
+    if (onlineCount >= config.maxParticipants) {
+      return res.status(403).json({
+        success: false,
+        message: `Room is full (${config.maxParticipants}/${config.maxParticipants})`,
+      });
+    }
+
+    const participant_id = crypto.randomUUID();
 
     room.participants.push({
       participant_id,
 
       client_id,
 
-      display_name:
-        display_name.trim(),
+      display_name: display_name.toUpperCase().trim(),
 
       is_online: true,
-
       joined_at:
         new Date(),
     });
 
     room.activity_logs.push({
-      type:
-        "participant_joined",
+      type:"participant_joined",
 
-      message:
-        `${display_name} joined room`,
+      message:`${display_name} joined room`,
     });
 
     await room.save();
@@ -410,6 +402,9 @@ const rejoinRoom = async (req, res) => {
   }
 };
 
+// Note: "streamed_local_video" is deliberately NOT included here — that content
+// source can only be set by the upload flow (videoUploadController.js), which
+// has the file metadata (file_id/path) this switch endpoint doesn't take.
 const VALID_CONTENT_TYPES = ["youtube", "local_video"];
 
 const validateContentMetadata = (type, metadata) => {
@@ -784,6 +779,7 @@ const ALLOWED_SETTINGS = [
   "allow_controller_requests",
   "allow_local_video",
   "allow_youtube",
+  "allow_streamed_video",
 ];
 
 const kickParticipant = async (req, res) => {
@@ -861,6 +857,17 @@ const muteParticipant = async (req, res) => {
     if (!target) return res.status(404).json({ success: false, message: "Participant not found" });
 
     target.is_muted = muted;
+    target.muted_by_host = muted;
+    // A host mute is a hard lock: cut the participant's mic immediately.
+    // Un-muting from the host side only lifts the lock — the participant
+    // must self-unmute via voice:toggle-mic.
+    if (muted) target.mic_on = false;
+
+    room.activity_logs.push({
+      type: muted ? "host_muted" : "host_unmuted",
+      message: `${target.display_name} was ${muted ? "muted" : "unmuted"} by the host`,
+    });
+
     await room.save();
 
     getIO()?.to(invite_token).emit(SOCKET.ROOM_UPDATED, { room });
@@ -898,10 +905,10 @@ const raiseHand = async (req, res) => {
 
 const updateRoomSettings = async (req, res) => {
   try {
-    const { invite_token, participant_id, settings } = req.body;
+    const { invite_token, participant_id, settings, room_name } = req.body;
 
-    if (!invite_token || !participant_id || !settings) {
-      return res.status(400).json({ success: false, message: "invite_token, participant_id, and settings are required" });
+    if (!invite_token || !participant_id || (!settings && !room_name?.trim())) {
+      return res.status(400).json({ success: false, message: "invite_token, participant_id, and settings or room_name are required" });
     }
 
     const room = await Room.findOne({ invite_token, status: "active" });
@@ -912,21 +919,33 @@ const updateRoomSettings = async (req, res) => {
     }
 
     // Only allow whitelisted boolean keys
-    ALLOWED_SETTINGS.forEach((key) => {
-      if (typeof settings[key] === "boolean") {
-        room.settings[key] = settings[key];
-      }
-    });
+    if (settings) {
+      ALLOWED_SETTINGS.forEach((key) => {
+        if (typeof settings[key] === "boolean") {
+          room.settings[key] = settings[key];
+        }
+      });
+      room.markModified("settings");
+    }
 
-    room.markModified("settings");
+    if (room_name?.trim()) {
+      room.room_name = room_name.trim();
+    }
+
     await room.save();
 
     getIO()?.to(invite_token).emit(SOCKET.ROOM_UPDATED, { room });
 
-    res.status(200).json({ success: true, settings: room.settings });
+    res.status(200).json({ success: true, settings: room.settings, room_name: room.room_name });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+// Config-only endpoint (not room-specific) so ICE server credentials/URLs can
+// be rotated on the backend without a frontend deploy.
+const getIceServers = (req, res) => {
+  res.status(200).json({ success: true, iceServers: config.iceServers });
 };
 
 const getRoomStats = async (req, res) => {
@@ -1016,4 +1035,5 @@ module.exports = {
   getRoomStats,
   getMyRooms,
   getWatchHistory,
+  getIceServers,
 };

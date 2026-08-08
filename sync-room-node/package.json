@@ -8,7 +8,9 @@
     "dev": "nodemon src/server.js",
     "lint": "eslint .",
     "test": "node --test",
-    "syntax-check": "node --check src/server.js"
+    "syntax-check": "node --check src/server.js",
+    "admin:status": "bash scripts/admin-status.sh",
+    "admin:rooms": "bash scripts/admin-status.sh rooms"
   },
   "engines": {
     "node": ">=18 <=22"
@@ -30,6 +32,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mongoose": "^8.24.0",
+    "multer": "^2.2.0",
     "socket.io": "^4.8.3"
   },
   "repository": {

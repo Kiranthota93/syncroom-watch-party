@@ -9,9 +9,12 @@ import extractFileMetadata from "../../utils/extractFileMetadata";
 import validateFileMetadata from "../../utils/validateFileMetadata";
 import YouTubeProvider    from "../../content/providers/YouTubeProvider";
 import LocalVideoProvider from "../../content/providers/LocalVideoProvider";
+import StreamedVideoProvider from "../../content/providers/StreamedVideoProvider";
 import LocalVideoPlayer   from "../LocalVideoPlayer/LocalVideoPlayer";
+import StreamedVideoPlayer from "../StreamedVideoPlayer/StreamedVideoPlayer";
 import { usePlayback } from "../../content/hooks/usePlayback";
 import { createLogger } from "../../utils/logger";
+import { IconUpload } from "../../components/icons";
 
 const log = createLogger("VideoStage");
 
@@ -111,12 +114,13 @@ const IconCompress = () => (
   </svg>
 );
 
-function VideoStage({ room, refreshRoom }) {
+function VideoStage({ room, refreshRoom, streamedUpload }) {
   const [urlInput, setUrlInput] = useState("");
   const [urlError, setUrlError] = useState("");
 
   const youtubeAllowed = room.settings?.allow_youtube !== false;
   const localVideoAllowed = room.settings?.allow_local_video !== false;
+  const streamedVideoAllowed = room.settings?.allow_streamed_video !== false;
 
   const selectSource = async (type) => {
     if (type === "youtube" && !youtubeAllowed) return;
@@ -144,11 +148,18 @@ function VideoStage({ room, refreshRoom }) {
   // Holds the active MediaProvider instance
   const providerRef    = useRef(null);
   const localVideoRef  = useRef(null);
+  const stageRef       = useRef(null);
 
 const [localFile,       setLocalFile]       = useState(null);
   const [localFileError,  setLocalFileError]  = useState("");
   const [extractingMeta,  setExtractingMeta]  = useState(false);
   const [playerError,     setPlayerError]     = useState(null);
+
+  // Streamed local video — host uploads once, everyone streams from the
+  // server (separate, parallel source from the per-participant local_video
+  // above). The upload itself is driven by `streamedUpload`, owned in Room so
+  // it's reachable from the header's content-source menu too, not just here.
+  const { uploading: streamedUploading, progress: streamedProgress, error: streamedError } = streamedUpload;
 
   // Custom player controls state (controller only)
   const [ctrlPlaying,    setCtrlPlaying]    = useState(false);
@@ -181,6 +192,16 @@ const [localFile,       setLocalFile]       = useState(null);
   const videoId     = room.content_source?.metadata?.video_id;
   const onlineCount = room.participants?.filter((p) => p.is_online).length || 0;
 
+  const streamedMeta  = room.content_source?.metadata;
+  const streamedReady = contentType === "streamed_local_video" && streamedMeta?.status === "ready";
+  const streamedUrl   = streamedReady
+    ? `${import.meta.env.VITE_API_URL ?? ""}/api/rooms/${room.invite_token}/video/${streamedMeta.file_id}`
+    : null;
+
+  // Local-video custom control state also drives the streamed-video player —
+  // both are plain HTML5 <video> elements under localVideoRef.
+  const hasCustomPlayer = !!localFile || streamedReady;
+
   // Playback engine + service — all sync and socket logic lives here
   const { setProvider, applyJoinSync, notifySeekStarted } = usePlayback({
     inviteToken:  room.invite_token,
@@ -212,19 +233,19 @@ const [localFile,       setLocalFile]       = useState(null);
 
   // ── Local file selection ──────────────────────────────────────
 
-  // Apply saved preferences when a local file is loaded
+  // Apply saved preferences when a local/streamed file is loaded
   useEffect(() => {
-    if (!localFile || !isController) return;
+    if (!hasCustomPlayer || !isController) return;
     const el = localVideoRef.current;
     if (!el) return;
     const { volume, playbackSpeed } = getPrefs();
     el.volume       = volume;
     el.playbackRate = playbackSpeed;
-  }, [localFile, isController]);
+  }, [hasCustomPlayer, isController]);
 
   // Poll video element for custom controls state (controller only)
   useEffect(() => {
-    if (!localFile || !isController) return;
+    if (!hasCustomPlayer || !isController) return;
     const interval = setInterval(() => {
       const el = localVideoRef.current;
       if (!el || !el.duration) return;
@@ -239,7 +260,7 @@ const [localFile,       setLocalFile]       = useState(null);
       setCtrlRate(el.playbackRate);
     }, 100);
     return () => clearInterval(interval);
-  }, [localFile, isController]);
+  }, [hasCustomPlayer, isController]);
 
   // Track fullscreen changes
   useEffect(() => {
@@ -306,12 +327,16 @@ const [localFile,       setLocalFile]       = useState(null);
     setShowSpeedMenu(false);
   };
 
+  // One fullscreen target for every source. Previously this hunted for
+  // `.lp-root` or `.player-container`, which meant the streamed player and
+  // YouTube viewers had no working path.
   const handleFullscreenToggle = () => {
-    const container = localVideoRef.current?.closest(".lp-root") ?? localVideoRef.current?.closest(".player-container");
-    if (!container) return;
-    document.fullscreenElement
-      ? document.exitFullscreen()
-      : container.requestFullscreen();
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+      return;
+    }
+    const frame = stageRef.current?.querySelector(".stage-frame");
+    (frame ?? stageRef.current)?.requestFullscreen?.().catch(() => {});
   };
 
   const handlePiPToggle = () => {
@@ -324,9 +349,9 @@ const [localFile,       setLocalFile]       = useState(null);
     }
   };
 
-  // Keyboard shortcuts — only active when local video is loaded
+  // Keyboard shortcuts — only active when a custom (local/streamed) player is loaded
   useEffect(() => {
-    if (!localFile) return;
+    if (!hasCustomPlayer) return;
     const onKey = (e) => {
       // Don't intercept when typing in an input
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -366,7 +391,7 @@ const [localFile,       setLocalFile]       = useState(null);
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localFile, isController, ctrlMuted]);
+  }, [hasCustomPlayer, isController, ctrlMuted]);
 
   const handleChangeFile = async () => {
     setLocalFile(null);
@@ -434,6 +459,11 @@ const [localFile,       setLocalFile]       = useState(null);
     }
   };
 
+  // ── Streamed local video (new, parallel source) ───────────────
+  // Upload mechanics live in the `streamedUpload` hook (owned by Room); this
+  // is just the file-input wiring for the empty-state's picker.
+  const handleStreamedFileSelect = (e) => streamedUpload.upload(e.target.files[0]);
+
   // Wire LocalVideoProvider when a file is selected and the <video> el is ready
   useEffect(() => {
     if (!localFile || !localVideoRef.current) return;
@@ -458,6 +488,31 @@ const [localFile,       setLocalFile]       = useState(null);
     };
   }, [localFile]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Wire StreamedVideoProvider once the uploaded file is ready to stream
+  useEffect(() => {
+    if (!streamedUrl || !localVideoRef.current) return;
+
+    const provider = new StreamedVideoProvider();
+    provider.attachElement(localVideoRef.current, streamedUrl);
+    providerRef.current = provider;
+    setProvider(provider);
+
+    const onReady = () => applyJoinSync(room.playback_state);
+    const onError = ({ message }) => setPlayerError(message || "Video playback failed.");
+
+    provider.on("ready", onReady);
+    provider.on("error", onError);
+
+    return () => {
+      provider.off("ready", onReady);
+      provider.off("error", onError);
+      provider.destroy();
+      providerRef.current = null;
+      setProvider(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streamedUrl]);
+
   // Reset local state and error when content type changes
   useEffect(() => {
     setPlayerError(null);
@@ -465,6 +520,10 @@ const [localFile,       setLocalFile]       = useState(null);
       setLocalFile(null);
       setLocalFileError("");
     }
+    if (contentType !== "streamed_local_video") {
+      streamedUpload.clearError();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentType]);
 
   // When the YouTube video is cleared (content switch / reset), destroy the
@@ -485,8 +544,8 @@ const [localFile,       setLocalFile]       = useState(null);
     setYtPlayerState(null);
   }, [videoId]);
 
-  // Viewer timeline polling — works for both YouTube and local video
-  const hasActiveContent = Boolean(videoId || localFile);
+  // Viewer timeline polling — works for YouTube, local video, and streamed video
+  const hasActiveContent = Boolean(videoId || hasCustomPlayer);
 
   useEffect(() => {
     if (!hasActiveContent || isController) return;
@@ -653,8 +712,21 @@ const [localFile,       setLocalFile]       = useState(null);
               {localVideoAllowed && (
                 <button className="source-btn" onClick={() => selectSource("local_video")}><IconFilm /> Local Video</button>
               )}
+              {streamedVideoAllowed && (
+                <label className={`source-btn ${streamedUploading ? "file-select-btn-loading" : ""}`}>
+                  <IconUpload size={13} /> {streamedUploading ? "Uploading…" : "Upload Video"}
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={handleStreamedFileSelect}
+                    disabled={streamedUploading}
+                    style={{ display: "none" }}
+                  />
+                </label>
+              )}
             </div>
           )}
+          {streamedError && <p className="file-error">{streamedError}</p>}
         </div>
       </section>
     );
@@ -705,7 +777,8 @@ const [localFile,       setLocalFile]       = useState(null);
   // YouTube player active
   if (contentType === "youtube" && videoId) {
     return (
-      <section className="video-stage video-stage-player">
+      <section className="video-stage video-stage-player" ref={stageRef}>
+        <div className="stage-frame">
         <div className="player-container">
           <YouTube
             videoId={videoId}
@@ -776,6 +849,64 @@ const [localFile,       setLocalFile]       = useState(null);
               </div>
             </>
           )}
+        </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Streamed local video — uploading or waiting for the controller to upload
+  if (contentType === "streamed_local_video" && !streamedReady) {
+    return (
+      <section className="video-stage">
+        <div className="video-stage-content">
+          <div className="stage-icon"><IconUpload size={32} /></div>
+
+          <h2>{isController ? "Uploading your video…" : `${controllerName} is uploading a video…`}</h2>
+
+          <div className="upload-progress-track">
+            <div className="upload-progress-fill" style={{ width: `${streamedProgress}%` }} />
+          </div>
+          <p>{streamedProgress}%</p>
+
+          {streamedError && <p className="file-error">{streamedError}</p>}
+        </div>
+      </section>
+    );
+  }
+
+  // Streamed local video — ready to play
+  if (contentType === "streamed_local_video" && streamedReady) {
+    return (
+      <section className="video-stage video-stage-player" ref={stageRef}>
+        <div className="stage-frame">
+        <StreamedVideoPlayer
+          videoRef={localVideoRef}
+          src={streamedUrl}
+          isController={isController}
+          controllerName={controllerName}
+          ctrlPlaying={ctrlPlaying}
+          ctrlTime={ctrlTime}
+          ctrlDuration={ctrlDuration}
+          ctrlVolume={ctrlVolume}
+          ctrlMuted={ctrlMuted}
+          ctrlRate={ctrlRate}
+          viewerTime={viewerTime}
+          viewerDuration={viewerDuration}
+          scrubValue={scrubValue}
+          showControls={showControls}
+          onPlayPause={handlePlayPause}
+          onSkip={handleSkip}
+          onScrubPointerDown={() => { isDraggingRef.current = true; }}
+          onScrubInput={handleScrubInput}
+          onScrubEnd={handleScrubEnd}
+          onVolumeChange={handleVolumeChange}
+          onMuteToggle={handleMuteToggle}
+          onSpeedChange={handleSpeedChange}
+          onFullscreenToggle={handleFullscreenToggle}
+          onMouseMove={handleShowControls}
+          onMouseLeave={() => setShowControls(false)}
+        />
         </div>
       </section>
     );
@@ -896,7 +1027,8 @@ const [localFile,       setLocalFile]       = useState(null);
     const allReady   = readyCount === onlineParticipants.length && onlineParticipants.length > 0;
 
     return (
-      <section className="video-stage video-stage-player">
+      <section className="video-stage video-stage-player" ref={stageRef}>
+        <div className="stage-frame">
         <LocalVideoPlayer
           videoRef={localVideoRef}
           isController={isController}
@@ -933,6 +1065,7 @@ const [localFile,       setLocalFile]       = useState(null);
           showControls={showControls}
           onChangeFile={handleChangeFile}
         />
+        </div>
       </section>
     );
   }
@@ -945,6 +1078,7 @@ VideoStage.propTypes = {
     room_code:                PropTypes.string.isRequired,
     invite_token:             PropTypes.string.isRequired,
     controller_participant_id: PropTypes.string,
+    settings: PropTypes.object,
     content_source: PropTypes.shape({
       type:     PropTypes.string,
       metadata: PropTypes.object,
@@ -965,6 +1099,13 @@ VideoStage.propTypes = {
     ),
   }).isRequired,
   refreshRoom: PropTypes.func.isRequired,
+  streamedUpload: PropTypes.shape({
+    uploading:   PropTypes.bool,
+    progress:    PropTypes.number,
+    error:       PropTypes.string,
+    upload:      PropTypes.func,
+    clearError:  PropTypes.func,
+  }).isRequired,
 };
 
 export default VideoStage;

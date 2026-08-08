@@ -1,0 +1,26 @@
+/*
+ * Shared design tokens for the room UI (voice/video call, drawers, floating
+ * pills). Centralizes values already duplicated ad hoc across component CSS
+ * files (glass borders, blur, accent color) — plain CSS custom properties,
+ * not a utility-class framework, so existing per-component .css files are
+ * untouched and keep authoring their own rules using these variables.
+ */
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-bg-strong: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: 16px;
+
+  --accent: #8b5cf6;
+  --accent-strong: #7c3aed;
+  --accent-glow: 0 0 24px rgba(139, 92, 246, 0.35);
+
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+
+  --radius-lg: 24px;
+  --radius-full: 999px;
+
+  --text-muted: #9ca3af;
+}

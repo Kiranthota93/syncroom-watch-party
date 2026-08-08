@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import PropTypes from 'prop-types';
 import socket from '../../socket/socket';
 import { SOCKET } from '../../constants/events';
 import './ReactionOverlay.css';
@@ -26,10 +27,13 @@ function FloatingReaction({ id, emoji, x, duration, onDone }) {
   );
 }
 
-/** Overlay that renders floating reactions + the picker bar. */
-export default function ReactionOverlay({ inviteToken, enabled = true }) {
+/**
+ * Floating-emoji layer. Anchored to the video stage, so it stays separate from
+ * the picker — the two share no state and belong in different places in the
+ * layout (emojis over the video, picker in the bottom dock).
+ */
+export default function ReactionOverlay() {
   const [reactions, setReactions] = useState([]);
-  const cooldownRef = useRef({});
 
   const addReaction = useCallback((emoji) => {
     const id = ++nextReactionId;
@@ -50,6 +54,32 @@ export default function ReactionOverlay({ inviteToken, enabled = true }) {
     return () => socket.off(SOCKET.REACTION_EMIT, onEmit);
   }, [addReaction]);
 
+  return (
+    <div className="reaction-overlay" aria-hidden="true">
+      {reactions.map((r) => (
+        <FloatingReaction
+          key={r.id}
+          id={r.id}
+          emoji={r.emoji}
+          x={r.x}
+          duration={r.duration}
+          onDone={removeReaction}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Emoji picker, collapsed behind a single trigger. Previously a persistent
+ * six-button row that held a full-width strip of above-the-fold space for an
+ * episodic action.
+ */
+export function ReactionPicker({ inviteToken }) {
+  const [open, setOpen] = useState(false);
+  const cooldownRef = useRef({});
+  const rootRef = useRef(null);
+
   const sendReaction = (emoji) => {
     // Per-emoji cooldown 800ms to avoid spam
     const now = Date.now();
@@ -58,24 +88,23 @@ export default function ReactionOverlay({ inviteToken, enabled = true }) {
     socket.emit(SOCKET.REACTION_SEND, { invite_token: inviteToken, emoji });
   };
 
-  return (
-    <>
-      {/* Floating emojis layer — covers the video stage area */}
-      <div className="reaction-overlay" aria-hidden="true">
-        {reactions.map((r) => (
-          <FloatingReaction
-            key={r.id}
-            id={r.id}
-            emoji={r.emoji}
-            x={r.x}
-            duration={r.duration}
-            onDone={removeReaction}
-          />
-        ))}
-      </div>
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
 
-      {/* Picker bar */}
-      {enabled && (
+  return (
+    <div className="reaction-dock" ref={rootRef}>
+      {open && (
         <div className="reaction-bar" role="toolbar" aria-label="Emoji reactions">
           {EMOJIS.map((emoji) => (
             <button
@@ -89,6 +118,28 @@ export default function ReactionOverlay({ inviteToken, enabled = true }) {
           ))}
         </div>
       )}
-    </>
+
+      <button
+        className={`reaction-trigger ${open ? 'reaction-trigger-open' : ''}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Send a reaction"
+        aria-expanded={open}
+        title="Send a reaction"
+      >
+        <span aria-hidden="true">🙂</span>
+      </button>
+    </div>
   );
 }
+
+ReactionPicker.propTypes = {
+  inviteToken: PropTypes.string.isRequired,
+};
+
+FloatingReaction.propTypes = {
+  id: PropTypes.number.isRequired,
+  emoji: PropTypes.string.isRequired,
+  x: PropTypes.number.isRequired,
+  duration: PropTypes.number.isRequired,
+  onDone: PropTypes.func.isRequired,
+};

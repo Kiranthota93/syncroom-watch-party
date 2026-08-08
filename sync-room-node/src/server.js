@@ -6,6 +6,7 @@ const app     = require("./app");
 const connectDB = require("./config/db");
 const { init }  = require("./socket/socketManager");
 const { createLogger } = require("./utils/logger");
+const { startRoomLifecycleSweep } = require("./utils/roomLifecycle");
 
 const log = createLogger("server");
 
@@ -15,6 +16,8 @@ const start = async () => {
 
     const server = http.createServer(app);
     init(server);
+    startRoomLifecycleSweep();
+
 
     server.listen(config.port, () => {
       log.info("Server running", {

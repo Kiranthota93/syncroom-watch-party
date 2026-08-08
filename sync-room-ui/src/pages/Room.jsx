@@ -11,14 +11,22 @@ const log = createLogger("Room");
 
 import RoomHeader          from "../room/RoomHeader/RoomHeader";
 import VideoStage           from "../room/VideoStage/VideoStage";
-import SourceSelector       from "../room/SourceSelector/SourceSelector";
 import RoomSidebar          from "../room/RoomSidebar/RoomSidebar";
 import { useChat }          from "../chat/useChat";
+import { useStreamedUpload } from "../content/hooks/useStreamedUpload";
 import { useNotifications } from "../notifications/useNotifications";
 import NotificationCenter   from "../components/NotificationCenter/NotificationCenter";
-import ReactionOverlay      from "../components/ReactionOverlay/ReactionOverlay";
+import ReactionOverlay, { ReactionPicker } from "../components/ReactionOverlay/ReactionOverlay";
 import PreferencesModal     from "../components/PreferencesModal/PreferencesModal";
 import RoomSkeleton         from "./RoomSkeleton";
+import MediaPermissionBanner   from "../room/MediaPermissionBanner/MediaPermissionBanner";
+import FloatingParticipantStrip from "../room/FloatingParticipantStrip/FloatingParticipantStrip";
+import VoiceControlBar      from "../room/VoiceControlBar/VoiceControlBar";
+import VideoCallDrawer      from "../room/VideoCallDrawer/VideoCallDrawer";
+import { useCallService }   from "../call/hooks/useCallService";
+import { useVoiceCall }     from "../call/hooks/useVoiceCall";
+import { useVideoCall }     from "../call/hooks/useVideoCall";
+import RemoteAudioPlayer    from "../call/RemoteAudioPlayer";
 
 import "./Room.css";
 
@@ -30,10 +38,26 @@ function Room() {
   const [loading, setLoading]         = useState(true);
   const [connected, setConnected]     = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [camerasOpen, setCamerasOpen] = useState(false);
+  const [peopleTab, setPeopleTab] = useState(null); // null = drawer closed, else 'room' | 'chat' | 'info'
+  const [theater, setTheater] = useState(false);
 
   const { prefs } = usePreferences();
 
   const currentUser = JSON.parse(localStorage.getItem("syncroom_user") || "{}");
+
+  const myParticipant = room?.participants?.find(
+    (p) => p.participant_id === currentUser.participant_id
+  );
+  const isPlaying = room?.playback_state?.status === "playing";
+  const callDisabledReason = isPlaying ? "Talking is paused while content is playing" : undefined;
+
+  const { service: callService, remoteStreams } = useCallService({
+    inviteToken:   invite_token,
+    participantId: currentUser.participant_id,
+  });
+  const voice = useVoiceCall({ service: callService, inviteToken: invite_token, myParticipant });
+  const video = useVideoCall({ service: callService, inviteToken: invite_token, myParticipant });
 
   const chat = useChat({
     inviteToken:   invite_token,
@@ -57,6 +81,15 @@ function Room() {
       setLoading(false);
     }
   }, [invite_token]);
+
+  // Owned here (not in VideoStage) so "upload/replace streamed video" is
+  // reachable from the header's content-source menu at any time, regardless
+  // of which source is currently active.
+  const streamedUpload = useStreamedUpload({
+    inviteToken:   invite_token,
+    participantId: currentUser.participant_id,
+    refreshRoom:   fetchRoom,
+  });
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("syncroom_user") || "{}");
@@ -104,6 +137,16 @@ function Room() {
     };
   }, [fetchRoom, invite_token, navigate]);
 
+  // Escape always leaves theater mode, so a collapsed header is never a trap.
+  useEffect(() => {
+    if (!theater) return;
+    const onKey = (e) => {
+      if (e.key === "Escape" && !document.fullscreenElement) setTheater(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [theater]);
+
   if (loading) return <RoomSkeleton />;
 
   if (!room) {
@@ -116,13 +159,33 @@ function Room() {
     );
   }
 
+  const pageClass = [
+    "room-page",
+    isPlaying && "room-page-playing",
+    theater && "room-page-theater",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div className="room-page">
+    <div className={pageClass}>
+      {theater && <div className="theater-reveal" aria-hidden="true" />}
+
       <RoomHeader
         room={room}
         refreshRoom={fetchRoom}
         connected={connected}
+        theater={theater}
+        onToggleTheater={() => setTheater((v) => !v)}
+        streamedUpload={streamedUpload}
         onOpenPreferences={() => setShowPreferences(true)}
+        onOpenCameras={() => setCamerasOpen(true)}
+        onOpenParticipants={() => setPeopleTab((t) => t ?? 'room')}
+      />
+
+      <MediaPermissionBanner
+        needMic={voice.error?.code === 'mic_permission_denied'}
+        needCam={video.error?.code === 'cam_permission_denied'}
+        onGrantMic={voice.join}
+        onGrantCam={video.join}
       />
 
       <div className="room-layout">
@@ -131,27 +194,78 @@ function Room() {
             <VideoStage
               room={room}
               refreshRoom={fetchRoom}
+              streamedUpload={streamedUpload}
             />
-            <ReactionOverlay
-              inviteToken={invite_token}
-              enabled={room.settings?.allow_emoji_reactions !== false}
-            />
+            <ReactionOverlay />
           </div>
 
-          <SourceSelector
-            room={room}
-            refreshRoom={fetchRoom}
-          />
-        </div>
+          {/* Collaboration controls share one dock so they can't collide, and
+              sit below the frame rather than over the player's control bar. */}
+          <div className="room-dock">
+            {room.settings?.allow_emoji_reactions !== false && (
+              <ReactionPicker inviteToken={invite_token} />
+            )}
 
-        <RoomSidebar
-          room={room}
-          refreshRoom={fetchRoom}
-          chat={{ ...chat, participantId: currentUser.participant_id }}
-        />
+            <VoiceControlBar
+              joined={voice.joined}
+              micOn={voice.micOn}
+              mutedByHost={voice.mutedByHost}
+              speakerMuted={voice.speakerMuted}
+              pending={voice.pending}
+              disabled={isPlaying}
+              disabledReason={callDisabledReason}
+              error={voice.error}
+              onJoin={voice.join}
+              onLeave={voice.leave}
+              onToggleMic={voice.toggleMic}
+              onToggleSpeaker={voice.toggleSpeaker}
+            />
+
+            <FloatingParticipantStrip
+              room={room}
+              speakingMap={voice.speakingMap}
+              onOpen={() => setPeopleTab((t) => t ?? 'room')}
+            />
+          </div>
+        </div>
       </div>
 
+      <RoomSidebar
+        open={peopleTab !== null}
+        tab={peopleTab || 'room'}
+        onTabChange={setPeopleTab}
+        onClose={() => setPeopleTab(null)}
+        room={room}
+        refreshRoom={fetchRoom}
+        chat={{ ...chat, participantId: currentUser.participant_id }}
+      />
+
       <NotificationCenter toasts={toasts} onDismiss={dismiss} />
+
+      <RemoteAudioPlayer remoteStreams={remoteStreams} muted={voice.speakerMuted} />
+
+      <VideoCallDrawer
+        open={camerasOpen}
+        onOpenChange={setCamerasOpen}
+        participants={room.participants || []}
+        myParticipantId={currentUser.participant_id}
+        remoteStreams={remoteStreams}
+        localStream={callService.localStream}
+        joined={video.joined}
+        camOn={video.camOn}
+        pinnedId={video.pinnedId}
+        setPinnedId={video.setPinnedId}
+        pending={video.pending}
+        disabled={isPlaying}
+        disabledReason={callDisabledReason}
+        error={video.error}
+        onJoin={video.join}
+        onLeave={video.leave}
+        onToggleCam={video.toggleCam}
+        micOn={voice.micOn}
+        mutedByHost={voice.mutedByHost}
+        onToggleMic={voice.toggleMic}
+      />
 
       {showPreferences && (
         <PreferencesModal onClose={() => setShowPreferences(false)} />

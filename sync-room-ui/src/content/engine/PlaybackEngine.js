@@ -188,6 +188,14 @@ class PlaybackEngine {
 
   _handleProviderEnded() {
     this._stateMachine.transition(STATES.ENDED);
+    if (!this._isController) return;
+    // Tell the server playback stopped. Without this the room's playback_state
+    // stayed "playing" after a video finished on its own, which (among other
+    // things) keeps voice chat disabled — that gates on status === "playing",
+    // and content that has ended is no longer actively playing.
+    this._triggerOutbound(ENGINE_OUTBOUND.PAUSE, {
+      current_time: this._provider?.getCurrentTime() ?? 0,
+    });
   }
 
   _handleProviderError() {

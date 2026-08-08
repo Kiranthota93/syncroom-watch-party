@@ -1,0 +1,113 @@
+/* Positioned by the shared .room-dock, not self-pinned — it used to be
+   `fixed; bottom:84px` alongside the participant strip, so the two overlapped
+   as the window narrowed. */
+.vcb-outer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.vcb-error {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.vcb-error {
+  font-size: 12px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+.vcb-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.vcb-join-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: var(--accent-glow);
+}
+
+.vcb-join-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.vcb-active {
+  padding-left: 14px;
+}
+
+.vcb-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: vcb-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes vcb-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+.vcb-live-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success);
+  margin-right: 4px;
+}
+
+.vcb-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+}
+
+.vcb-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Muted state — a neutral tint, not red. Only Leave is a "danger" action;
+   a muted mic/speaker isn't one, so it shouldn't compete visually with Leave. */
+.vcb-icon-muted {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fca5a5;
+}
+
+.vcb-leave-btn {
+  background: var(--danger);
+}
