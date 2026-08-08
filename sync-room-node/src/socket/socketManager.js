@@ -138,7 +138,10 @@ const relayToParticipant = async (invite_token, to_participant_id, event, payloa
 const init = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: [config.clientUrl, "http://localhost:5173"],
+      // Must match app.js — a socket handshake is a normal CORS request, so an
+      // origin allowed for the API but not here fails the upgrade in a way that
+      // surfaces only as a browser-side connect_error.
+      origin: config.clientUrls,
       methods: ["GET", "POST"],
       credentials: true,
     },

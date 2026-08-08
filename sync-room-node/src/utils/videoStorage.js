@@ -99,6 +99,28 @@ const deleteRoomUploads = async (invite_token) => {
   });
 };
 
+// Removes every finalized and in-progress upload, including folders left behind
+// by rooms that no longer have a database record. This is deliberately only
+// called by the explicitly-confirmed admin purge endpoint.
+const deleteAllUploads = async () => {
+  const dir = path.resolve(config.uploads.dir);
+
+  // A bad UPLOADS_DIR value must never turn an admin cleanup into removal of a
+  // whole drive or filesystem root.
+  if (dir === path.parse(dir).root) {
+    throw new Error('Refusing to delete uploads directory because it resolves to a filesystem root');
+  }
+
+  closeVideoStreamsIn(dir);
+  await fsp.rm(dir, {
+    recursive: true,
+    force: true,
+    maxRetries: 5,
+    retryDelay: 200,
+  });
+  await ensureDir(dir);
+};
+
 module.exports = {
   roomDir,
   tmpDir,
@@ -109,4 +131,5 @@ module.exports = {
   hasEnoughFreeSpace,
   finalizeUpload,
   deleteRoomUploads,
+  deleteAllUploads,
 };

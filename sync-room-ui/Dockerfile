@@ -7,8 +7,15 @@ RUN npm install
 
 COPY . .
 
+# Vite inlines these at build time — they cannot be changed by restarting the
+# container, only by rebuilding. Empty means "use the page's own origin", which
+# is what the nginx-proxied compose setup wants.
 ARG VITE_API_URL=""
+ARG VITE_SOCKET_URL=""
+ARG VITE_LOG_LEVEL="warn"
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
+ENV VITE_LOG_LEVEL=$VITE_LOG_LEVEL
 
 RUN npm run build
 

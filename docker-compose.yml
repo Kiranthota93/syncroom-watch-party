@@ -10,6 +10,13 @@ services:
       - ./sync-room-node/.env
     environment:
       NODE_ENV: production
+      # Pinned here so it always matches the volume mount below. Left to the
+      # container's own filesystem, uploaded videos live in the writable layer
+      # and are destroyed on every redeploy — while the database keeps pointing
+      # at them, so rooms end up referencing files that no longer exist.
+      UPLOADS_DIR: /var/syncroom-uploads
+    volumes:
+      - uploads:/var/syncroom-uploads
     expose:
       - "8000"          # internal only — nginx reaches it, host does not
     restart: unless-stopped
@@ -22,7 +29,11 @@ services:
       context: ./sync-room-ui
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ""  # empty = relative URLs, nginx proxies to backend
+        # Empty = same-origin requests, which nginx proxies to the backend.
+        # Only set these when the frontend is served from a different host than
+        # the API (e.g. Vercel frontend + standalone API server).
+        VITE_API_URL: ""
+        VITE_SOCKET_URL: ""
     container_name: syncroom-frontend
     ports:
       - "80:80"           # public entry point
@@ -35,3 +46,8 @@ services:
 networks:
   syncroom:
     driver: bridge
+
+volumes:
+  # Survives `docker compose down` and image rebuilds. Back this up (or point
+  # it at a host path / mounted disk) before it holds anything you care about.
+  uploads:

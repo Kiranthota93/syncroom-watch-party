@@ -9,7 +9,7 @@ const WatchSession = require('../models/watchSessionModel');
 const config = require('../config');
 const { getIO } = require('../socket/socketManager');
 const { SOCKET } = require('../constants/events');
-const { deleteRoomUploads } = require('../utils/videoStorage');
+const { deleteRoomUploads, deleteAllUploads } = require('../utils/videoStorage');
 const { runSweep } = require('../utils/roomLifecycle');
 const { createLogger } = require('../utils/logger');
 
@@ -290,6 +290,55 @@ const deleteRoomContent = async (req, res) => {
   }
 };
 
+const PURGE_CONFIRMATION = 'DELETE_ALL_ROOMS_AND_UPLOADS';
+
+/**
+ * Permanently delete every room and every uploaded video from this server.
+ * The confirmation value makes this endpoint difficult to trigger by accident;
+ * authentication is still enforced for the whole admin router.
+ */
+const purgeAllRoomsAndUploads = async (req, res) => {
+  try {
+    if (req.body?.confirmation !== PURGE_CONFIRMATION) {
+      return res.status(400).json({
+        success: false,
+        message: `Set confirmation to ${PURGE_CONFIRMATION} to permanently delete all rooms and uploads`,
+      });
+    }
+
+    const rooms = await Room.find({}).select('_id invite_token room_code');
+    rooms.forEach((room) => getIO()?.to(room.invite_token).emit(SOCKET.ROOM_ENDED));
+
+    // Delete the upload root as well as room documents. This catches orphaned
+    // video directories and partial uploads that are not associated with a room.
+    const [roomResult, messageResult, watchSessionResult] = await Promise.all([
+      Room.deleteMany({}),
+      Message.deleteMany({}),
+      WatchSession.deleteMany({}),
+      deleteAllUploads(),
+    ]);
+
+    log.warn('Admin purged all rooms and uploads', {
+      rooms: roomResult.deletedCount,
+      messages: messageResult.deletedCount,
+      watchSessions: watchSessionResult.deletedCount,
+    });
+
+    return res.json({
+      success: true,
+      deleted: {
+        rooms: roomResult.deletedCount,
+        messages: messageResult.deletedCount,
+        watch_sessions: watchSessionResult.deletedCount,
+        uploads: 'all',
+      },
+    });
+  } catch (err) {
+    log.error('purgeAllRoomsAndUploads', { error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 /** Run the lifecycle sweep on demand. Honours ROOM_CLEANUP_DRY_RUN. */
 const runCleanup = async (_req, res) => {
   try {
@@ -301,4 +350,12 @@ const runCleanup = async (_req, res) => {
   }
 };
 
-module.exports = { getStats, listRooms, deleteRoom, bulkDeleteRooms, deleteRoomContent, runCleanup };
+module.exports = {
+  getStats,
+  listRooms,
+  deleteRoom,
+  bulkDeleteRooms,
+  deleteRoomContent,
+  purgeAllRoomsAndUploads,
+  runCleanup,
+};

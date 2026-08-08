@@ -8,6 +8,7 @@ const {
   deleteRoom,
   bulkDeleteRooms,
   deleteRoomContent,
+  purgeAllRoomsAndUploads,
   runCleanup,
 } = require('../controllers/adminController');
 
@@ -20,6 +21,7 @@ router.get('/stats', getStats);
 router.get('/rooms', listRooms);
 router.post('/cleanup', runCleanup);
 router.post('/rooms/bulk-delete', bulkDeleteRooms);
+router.delete('/purge-all', purgeAllRoomsAndUploads);
 router.delete('/rooms/:invite_token/content', deleteRoomContent);
 router.delete('/rooms/:invite_token', deleteRoom);
 

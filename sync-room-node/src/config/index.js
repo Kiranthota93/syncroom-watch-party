@@ -3,110 +3,273 @@
 const path = require('path');
 
 /**
- * Centralised environment configuration.
+ * Centralized environment configuration.
  *
- * Reads process.env once at startup.  Any missing required variable throws
- * immediately so the server never starts in a broken state.
- *
- * All application code imports from here — never reads process.env directly.
+ * Reads process.env once at startup.
+ * Missing required variables fail fast so the server never starts
+ * in a broken configuration.
  */
 
 const required = (name) => {
   const value = process.env[name];
-  if (!value) {
-    throw new Error(`[config] Missing required environment variable: ${name}`);
+
+  if (!value || !value.trim()) {
+    throw new Error(
+      `[config] Missing required environment variable: ${name}`
+    );
   }
-  return value;
+
+  return value.trim();
 };
 
+/**
+ * WebRTC ICE servers.
+ *
+ * Production should explicitly configure ICE_SERVERS.
+ * STUN-only is supported for now. TURN can be added later.
+ *
+ * Example:
+ * ICE_SERVERS=[{"urls":"stun:stun.l.google.com:19302"}]
+ */
 const parseIceServers = () => {
   const raw = process.env.ICE_SERVERS;
-  if (raw) {
+
+  if (raw && raw.trim()) {
     try {
-      return JSON.parse(raw);
-    } catch {
-      throw new Error('[config] ICE_SERVERS must be valid JSON (array of RTCIceServer objects)');
+      const parsed = JSON.parse(raw);
+
+      if (!Array.isArray(parsed)) {
+        throw new Error('ICE_SERVERS must be an array');
+      }
+
+      return parsed;
+    } catch (error) {
+      throw new Error(
+        `[config] ICE_SERVERS must be valid JSON (array of RTCIceServer objects): ${error.message}`
+      );
     }
   }
-  // Dev-only fallback — public STUN only, no TURN. Production must set ICE_SERVERS
-  // (including a TURN server) or a large fraction of NAT'd users will have silently
-  // broken audio/video.
-  return [{ urls: 'stun:stun.l.google.com:19302' }];
+
+  // Safe fallback for development.
+  // Production should explicitly set ICE_SERVERS.
+  return [
+    {
+      urls: 'stun:stun.l.google.com:19302',
+    },
+  ];
 };
 
-// `/var` is a conventional Linux location, but on Windows Node resolves it to
-// the root of the current drive (for example `D:\\var`). Keep development
-// uploads inside the project unless a deployment explicitly sets UPLOADS_DIR.
-const defaultUploadsDir = process.platform === 'win32'
-  ? path.join(process.cwd(), 'var', 'syncroom-uploads')
-  : '/var/syncroom-uploads';
+/**
+ * CORS / Socket.IO allowed origins.
+ *
+ * CLIENT_URL:
+ *   Primary frontend URL.
+ *
+ * CLIENT_URLS:
+ *   Optional comma-separated additional frontend origins.
+ *
+ * Example:
+ * CLIENT_URL=https://syncroom-watch-party-ten.vercel.app
+ * CLIENT_URLS=https://badland-ether-flattery.ngrok-free.dev
+ */
+const normalizeOrigin = (value) =>
+  value.trim().replace(/\/$/, '');
+
+const parseClientUrls = () => {
+  const primary = required('CLIENT_URL');
+
+  const additional = (process.env.CLIENT_URLS ?? '')
+    .split(',')
+    .map(normalizeOrigin)
+    .filter(Boolean);
+
+  const origins = [
+    normalizeOrigin(primary),
+    ...additional,
+  ];
+
+  // Only allow local development origin outside production.
+  if (process.env.NODE_ENV !== 'production') {
+    origins.push('http://localhost:5173');
+  }
+
+  return [...new Set(origins)];
+};
+
+/**
+ * Upload directory.
+ *
+ * On Linux production:
+ *   /var/syncroom-uploads
+ *
+ * On Windows development:
+ *   ./var/syncroom-uploads
+ */
+const defaultUploadsDir =
+  process.platform === 'win32'
+    ? path.join(process.cwd(), 'var', 'syncroom-uploads')
+    : '/var/syncroom-uploads';
 
 const config = {
-  port:      parseInt(process.env.PORT ?? '8000', 10),
+  // ==============================
+  // Server
+  // ==============================
+
+  port: parseInt(process.env.PORT ?? '8000', 10),
+
   clientUrl: required('CLIENT_URL'),
-  mongoUri:  required('MONGO_URI'),
-  nodeEnv:   process.env.NODE_ENV ?? 'production',
-  isDev:     process.env.NODE_ENV !== 'production',
-  // logLevel:  process.env.LOG_LEVEL ?? 'info',
+
+  clientUrls: parseClientUrls(),
+
+  mongoUri: required('MONGO_URI'),
+
+  nodeEnv: process.env.NODE_ENV ?? 'production',
+
+  // Consumed by utils/logger.js. Without this key LOG_LEVEL is silently
+  // ignored and everything logs at 'info' regardless of what is configured.
+  logLevel: process.env.LOG_LEVEL ?? 'info',
+
+  // ==============================
+  // WebRTC
+  // ==============================
 
   iceServers: parseIceServers(),
 
-  maxParticipants: parseInt(process.env.MAX_PARTICIPANTS ?? '10', 10),
-  maxCamerasOn:    parseInt(process.env.MAX_CAMERAS_ON ?? '6', 10),
+  // ==============================
+  // Room / Participant Limits
+  // ==============================
 
-  // How long a disconnected participant's room state (online status, voice/video
-  // call membership, mic/cam, controller role) is held before being torn down —
-  // long enough to survive a page reload without looking like they left.
-  disconnectGraceMs: parseInt(process.env.DISCONNECT_GRACE_MS ?? '15000', 10),
+  maxParticipants: parseInt(
+    process.env.MAX_PARTICIPANTS ?? '10',
+    10
+  ),
+
+  maxCamerasOn: parseInt(
+    process.env.MAX_CAMERAS_ON ?? '6',
+    10
+  ),
+
+  /**
+   * How long disconnected participant state is retained
+   * before being considered permanently disconnected.
+   */
+  disconnectGraceMs: parseInt(
+    process.env.DISCONNECT_GRACE_MS ?? '15000',
+    10
+  ),
+
+  // ==============================
+  // Uploads
+  // ==============================
 
   uploads: {
-    dir:        process.env.UPLOADS_DIR ?? defaultUploadsDir,
-    maxFileSizeBytes: parseInt(process.env.UPLOAD_MAX_FILE_SIZE_BYTES ?? String(2 * 1024 * 1024 * 1024), 10), // 2GB
-    minFreeDiskBytes: parseInt(process.env.UPLOAD_MIN_FREE_DISK_BYTES ?? String(1 * 1024 * 1024 * 1024), 10), // 1GB safety margin
+    dir:
+      process.env.UPLOADS_DIR ??
+      defaultUploadsDir,
+
+    // 2 GB
+    maxFileSizeBytes: parseInt(
+      process.env.UPLOAD_MAX_FILE_SIZE_BYTES ??
+        String(2 * 1024 * 1024 * 1024),
+      10
+    ),
+
+    // Keep at least 1 GB free
+    minFreeDiskBytes: parseInt(
+      process.env.UPLOAD_MIN_FREE_DISK_BYTES ??
+        String(1 * 1024 * 1024 * 1024),
+      10
+    ),
   },
 
-  // Room lifecycle. Rooms were previously created with a 24h `expires_at` that
-  // nothing ever acted on, so every room stayed status:"active" forever —
-  // still joinable via its old invite link, and still holding its uploads.
+  // ==============================
+  // Room Lifecycle
+  // ==============================
+
   lifecycle: {
-    // How often the sweep runs.
-    sweepIntervalMs: parseInt(process.env.ROOM_SWEEP_INTERVAL_MS ?? String(10 * 60 * 1000), 10), // 10m
+    // Run cleanup every 10 minutes.
+    sweepIntervalMs: parseInt(
+      process.env.ROOM_SWEEP_INTERVAL_MS ??
+        String(10 * 60 * 1000),
+      10
+    ),
 
-    // An empty / all-offline room is expired once it has been that way this
-    // long. Generous enough to survive a page reload or a brief dropout —
-    // disconnectGraceMs (15s) already covers the reconnect case.
-    emptyGraceMs: parseInt(process.env.ROOM_EMPTY_GRACE_MS ?? String(15 * 60 * 1000), 10), // 15m
+    /**
+     * Empty/all-offline room grace period.
+     *
+     * Production default: 6 hours.
+     */
+    emptyGraceMs: parseInt(
+      process.env.ROOM_EMPTY_GRACE_MS ??
+        String(6 * 60 * 60 * 1000),
+      10
+    ),
 
-    // Hard ceiling: even a continuously-occupied room expires this long after
-    // its last genuine activity, so nothing lives indefinitely.
-    maxIdleMs: parseInt(process.env.ROOM_MAX_IDLE_MS ?? String(24 * 60 * 60 * 1000), 10), // 24h
+    /**
+     * Hard maximum idle lifetime.
+     *
+     * Production default: 24 hours.
+     */
+    maxIdleMs: parseInt(
+      process.env.ROOM_MAX_IDLE_MS ??
+        String(24 * 60 * 60 * 1000),
+      10
+    ),
 
-    // How long an expired/ended room is kept before being hard-deleted along
-    // with its uploads. Keeps recent history readable without holding storage.
-    retentionMs: parseInt(process.env.ROOM_RETENTION_MS ?? String(7 * 24 * 60 * 60 * 1000), 10), // 7d
+    /**
+     * How long expired/ended rooms remain before
+     * hard deletion of room data and uploaded files.
+     *
+     * Production default: 7 days.
+     */
+    retentionMs: parseInt(
+      process.env.ROOM_RETENTION_MS ??
+        String(7 * 24 * 60 * 60 * 1000),
+      10
+    ),
 
-    // Irreversible stages (hard-deleting rooms and their uploaded video files)
-    // are opt-in. Defaults to a dry run that logs exactly what *would* be
-    // removed, so the retention settings can be sanity-checked against real
-    // data before anything is destroyed. Set ROOM_CLEANUP_DRY_RUN=false to arm.
-    // Expiring a room (a reversible status change) always runs for real.
-    dryRun: (process.env.ROOM_CLEANUP_DRY_RUN ?? 'true') !== 'false',
+    /**
+     * false = actually delete expired room content.
+     *
+     * true = dry-run; only logs what would be deleted.
+     */
+    dryRun:
+      (process.env.ROOM_CLEANUP_DRY_RUN ?? 'true') !==
+      'false',
   },
+
+  // ==============================
+  // Admin
+  // ==============================
 
   admin: {
-    // Read from the environment only — never a literal in source, so the key
-    // can be rotated without a code change and can't leak through git history.
-    // Unset means the admin API stays disabled (fail closed) rather than
-    // falling back to some default that would be identical on every deploy.
+    /**
+     * Admin API is disabled when ADMIN_PASSKEY is not configured.
+     * Never hard-code the secret in source.
+     */
     passkey: process.env.ADMIN_PASSKEY || null,
   },
 };
 
+// ==============================
+// Environment helpers
+// ==============================
+
 Object.defineProperties(config, {
-  isDev:  { get() { return this.nodeEnv !== 'production'; } },
-  isProd: { get() { return this.nodeEnv === 'production'; } },
+  isDev: {
+    get() {
+      return this.nodeEnv !== 'production';
+    },
+  },
+
+  isProd: {
+    get() {
+      return this.nodeEnv === 'production';
+    },
+  },
 });
 
+// Prevent accidental mutation at runtime.
 Object.freeze(config);
 
 module.exports = config;
