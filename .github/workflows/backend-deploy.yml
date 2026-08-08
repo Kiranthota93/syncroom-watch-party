@@ -16,9 +16,11 @@ jobs:
         working-directory: sync-room-node
 
     steps:
+      # 1. Get latest source code
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 2. Setup the same Node version as production
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -26,33 +28,124 @@ jobs:
           cache: npm
           cache-dependency-path: sync-room-node/package-lock.json
 
+      # 3. Install exact dependencies from package-lock.json
       - name: Install Dependencies
         run: npm ci
 
+      # 4. Code quality check
       - name: Run ESLint
         run: npm run lint
 
+      # 5. JavaScript syntax check
       - name: Check JavaScript Syntax
         run: npm run syntax-check
 
+      # 6. Deploy to EC2
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          ADMIN_PASSKEY: ${{ secrets.ADMIN_PASSKEY }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: ADMIN_PASSKEY
+
           script: |
+            set -e
+
             cd /home/ubuntu/syncroom-watch-party
 
+            echo "Pulling latest code..."
             git pull origin main
 
             cd sync-room-node
 
+            echo "Installing dependencies..."
             npm ci
 
-            pm2 reload syncroom-backend
+            echo "Updating ADMIN_PASSKEY..."
 
+            touch .env
+
+            grep -v '^ADMIN_PASSKEY=' .env > .env.tmp || true
+
+            printf 'ADMIN_PASSKEY=%s\n' "$ADMIN_PASSKEY" >> .env.tmp
+
+            mv .env.tmp .env
+
+            echo "Reloading backend..."
+            pm2 reload syncroom-backend --update-env
+
+            echo "Deployment completed."
+
+      # 7. Verify production API
       - name: Verify Health
         run: |
           sleep 5
           curl --fail https://syncroom-api.duckdns.org/health
+          
+
+# name: Backend CI/CD
+
+# on:
+#   push:
+#     branches:
+#       - main
+#     paths:
+#       - "sync-room-node/**"
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     defaults:
+#       run:
+#         working-directory: sync-room-node
+
+#     steps:
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
+
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 22
+#           cache: npm
+#           cache-dependency-path: sync-room-node/package-lock.json
+
+#       - name: Install Dependencies
+#         run: npm ci
+
+#       - name: Run ESLint
+#         run: npm run lint
+
+#       - name: Check JavaScript Syntax
+#         run: npm run syntax-check
+
+#       - name: Deploy to EC2
+#         uses: appleboy/ssh-action@v1.2.0
+#         with:
+#           host: ${{ secrets.EC2_HOST }}
+#           username: ${{ secrets.EC2_USERNAME }}
+#           key: ${{ secrets.EC2_SSH_KEY }}
+#           script: |
+#             cd /home/ubuntu/syncroom-watch-party
+
+#             git pull origin main
+
+#             cd sync-room-node
+
+#             npm ci
+
+#             pm2 reload syncroom-backend
+
+#       - name: Verify Health
+#         run: |
+#           sleep 5
+#           curl --fail https://syncroom-api.duckdns.org/health
+#           # This endpoint is auth-protected, so an unauthenticated request must
+#           # be rejected with 401 (or 503 when ADMIN_PASSKEY is intentionally
+#           # unset). A 404 means the server did not deploy the current routes.
+#           status=$(curl -sS -o /dev/null -w "%{http_code}" https://syncroom-api.duckdns.org/api/admin/verify)
+#           test "$status" = "401" || test "$status" = "503"
