@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
 const Room = require('../models/roomModel');
+const Video = require('../models/videoModel');
 const config = require('../config');
 const { getIO } = require('../socket/socketManager');
 const { SOCKET } = require('../constants/events');
@@ -15,6 +16,8 @@ const {
   hasEnoughFreeSpace,
   finalizeUpload,
   createVideoReadStream,
+  hashFile,
+  moveToLibrary,
 } = require('../utils/videoStorage');
 
 const log = createLogger('videoUploadController');
@@ -168,19 +171,62 @@ const uploadChunk = async (req, res) => {
       return res.status(200).json({ success: true });
     }
 
-    const { file_id, ext } = room.content_source.metadata;
-    const finalFilePath = await finalizeUpload(invite_token, upload_id, file_id, ext, total);
+    const { file_id, ext: fileExt } = room.content_source.metadata;
+    const finalFilePath = await finalizeUpload(invite_token, upload_id, file_id, fileExt, total);
 
     room.content_source.metadata.status = 'ready';
-    room.content_source.metadata.path = finalFilePath;
     room.content_source.metadata.uploaded_at = new Date();
     room.markModified('content_source');
+
+    const contentFilePath = finalFilePath;
+    const contentHash = await hashFile(contentFilePath);
+    const videoKey = `VID-${crypto.randomBytes(9).toString('base64url')}`;
+    const storageExt = path.extname(contentFilePath) || '.mp4';
+
+    let video = await Video.findOne({ content_hash: contentHash });
+    if (!video) {
+      const storagePath = await moveToLibrary(contentFilePath, videoKey, storageExt);
+
+      video = await Video.create({
+        video_key: videoKey,
+        title: room.content_source.metadata.original_name || `Uploaded video ${videoKey}`,
+        original_name: room.content_source.metadata.original_name,
+        content_hash: contentHash,
+        storage_path: storagePath,
+        mime_type: room.content_source.metadata.mime_type || 'video/mp4',
+        size_bytes: room.content_source.metadata.size_bytes,
+        duration: room.content_source.metadata.duration || 0,
+      });
+    } else {
+      // Remove only the duplicate room-local copy if this content already exists.
+      await fs.promises.unlink(contentFilePath).catch(() => null);
+    }
+
+    room.content_source.metadata.video_key = video.video_key;
+    room.content_source.metadata.file_id = video.video_key;
+    room.content_source.metadata.storage_path = video.storage_path;
+    room.content_source.metadata.path = video.storage_path;
+    room.content_source.metadata.status = 'ready';
+    room.content_source.metadata.uploaded_at = new Date();
+    room.markModified('content_source');
+
+    if (!room.upload_history.some((entry) => entry.video_key === video.video_key)) {
+      room.upload_history.push({
+        video_id: video._id,
+        video_key: video.video_key,
+        title: video.title,
+        original_name: video.original_name,
+        mime_type: video.mime_type,
+        size_bytes: video.size_bytes,
+        duration: video.duration,
+      });
+    }
 
     await room.save();
 
     getIO()?.to(invite_token).emit(SOCKET.ROOM_UPDATED, { room });
 
-    res.status(200).json({ success: true, done: true });
+    res.status(200).json({ success: true, done: true, video_key: video.video_key });
   } catch (err) {
     log.error('uploadChunk', { error: err.message });
     res.status(500).json({ success: false, message: err.message });

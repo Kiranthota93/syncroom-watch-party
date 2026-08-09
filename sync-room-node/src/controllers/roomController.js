@@ -1,4 +1,5 @@
 const Room = require("../models/roomModel");
+const Video = require("../models/videoModel");
 const WatchSession = require("../models/watchSessionModel");
 const generateRoomCode = require("../utils/generateRoomCode");
 const crypto = require("crypto");
@@ -405,7 +406,7 @@ const rejoinRoom = async (req, res) => {
 // Note: "streamed_local_video" is deliberately NOT included here — that content
 // source can only be set by the upload flow (videoUploadController.js), which
 // has the file metadata (file_id/path) this switch endpoint doesn't take.
-const VALID_CONTENT_TYPES = ["youtube", "local_video"];
+const VALID_CONTENT_TYPES = ["youtube", "local_video", "streamed_local_video"];
 
 const validateContentMetadata = (type, metadata) => {
   if (type === "youtube") {
@@ -414,6 +415,15 @@ const validateContentMetadata = (type, metadata) => {
       return "YouTube content requires metadata.video_id";
     }
     // Empty metadata = switching type only (no specific video yet) — allowed
+  }
+  if (type === "streamed_local_video") {
+    const hasMetadata = metadata && Object.keys(metadata).length > 0;
+    if (!hasMetadata) {
+      return "Streamed video content requires metadata";
+    }
+    if (!metadata.video_key && !metadata.file_id) {
+      return "Streamed video content requires metadata.video_key or metadata.file_id";
+    }
   }
   // local_video metadata is validated in Phase 4.5
   return null;
@@ -425,6 +435,10 @@ const buildActivityMessage = (type, metadata) => {
   }
   if (type === "local_video" && metadata?.filename) {
     return `Content source changed to Local Video (${metadata.filename})`;
+  }
+  if (type === "streamed_local_video") {
+    const title = metadata?.title || metadata?.original_name || metadata?.video_key || 'Uploaded Video';
+    return `Content source changed to Uploaded Video (${title})`;
   }
   return `Content source changed to ${type}`;
 };
@@ -485,10 +499,44 @@ const updateContentSource = async (req, res) => {
       });
     }
 
-    room.content_source = {
+    let contentSource = {
       type: content_source.type,
       metadata: content_source.metadata || {},
     };
+
+    if (content_source.type === 'streamed_local_video' && content_source.metadata?.video_key) {
+      const video = await Video.findOne({ video_key: content_source.metadata.video_key });
+      if (!video) {
+        return res.status(404).json({ success: false, message: 'Video not found' });
+      }
+
+      contentSource.metadata = {
+        video_key: video.video_key,
+        file_id: video.video_key,
+        storage_path: video.storage_path,
+        status: 'ready',
+        uploaded_at: video.updated_at || video.created_at,
+        mime_type: video.mime_type,
+        size_bytes: video.size_bytes,
+        duration: video.duration,
+        title: video.title,
+        original_name: video.original_name,
+      };
+
+      if (!room.upload_history.some((entry) => entry.video_key === video.video_key)) {
+        room.upload_history.push({
+          video_id: video._id,
+          video_key: video.video_key,
+          title: video.title,
+          original_name: video.original_name,
+          mime_type: video.mime_type,
+          size_bytes: video.size_bytes,
+          duration: video.duration,
+        });
+      }
+    }
+
+    room.content_source = contentSource;
 
     // Reset playback state whenever the content source changes.
     room.playback_state = {
