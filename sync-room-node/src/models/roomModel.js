@@ -115,31 +115,6 @@ const roomSchema = new mongoose.Schema(
       },
     ],
 
-    upload_history: [
-      {
-        video_id: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Video',
-        },
-        video_key: {
-          type: String,
-          required: true,
-        },
-        title: {
-          type: String,
-          required: true,
-        },
-        original_name: String,
-        mime_type: String,
-        size_bytes: Number,
-        duration: Number,
-        created_at: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
-
     content_source: {
       type: mongoose.Schema.Types.Mixed,
       default: null,

@@ -3,7 +3,6 @@
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
-const crypto = require('crypto');
 const config = require('../config');
 
 // Windows does not allow an open file to be deleted. Keep track of streams we
@@ -19,36 +18,6 @@ const tmpDir = (invite_token, upload_id) => path.join(roomDir(invite_token), 'tm
 const finalPath = (invite_token, file_id, ext) => path.join(roomDir(invite_token), `${file_id}${ext}`);
 
 const ensureDir = async (dir) => fsp.mkdir(dir, { recursive: true });
-
-const libraryDir = () => path.join(config.uploads.dir, 'videos');
-const libraryPath = (video_key, ext) => path.join(libraryDir(), `${video_key}${ext}`);
-
-const hashFile = async (filePath) => {
-  const hash = crypto.createHash('sha256');
-  await new Promise((resolve, reject) => {
-    const rs = fs.createReadStream(filePath);
-    rs.on('data', (chunk) => hash.update(chunk));
-    rs.on('end', resolve);
-    rs.on('error', reject);
-  });
-  return hash.digest('hex');
-};
-
-const moveToLibrary = async (sourcePath, video_key, ext) => {
-  await ensureDir(libraryDir());
-  const dest = libraryPath(video_key, ext);
-  try {
-    await fsp.rename(sourcePath, dest);
-  } catch (err) {
-    if (err.code === 'EXDEV') {
-      await fsp.copyFile(sourcePath, dest);
-      await fsp.unlink(sourcePath);
-    } else {
-      throw err;
-    }
-  }
-  return dest;
-};
 
 const createVideoReadStream = (filePath, options) => {
   const stream = fs.createReadStream(filePath, options);
