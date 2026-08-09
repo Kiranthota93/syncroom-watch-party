@@ -163,6 +163,4 @@ module.exports = {
   finalizeUpload,
   deleteRoomUploads,
   deleteAllUploads,
-  hashFile,
-  moveToLibrary,
 };
